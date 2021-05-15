@@ -9,13 +9,15 @@ from PyQt5 import uic
 
 import sys, getopt, argparse, json, time, getpass, os.path
 
+from order_details import OrderDetailsDialog
+
 TESTNET = True
 
 #NOTE: Nothing with rosetta is not needed, these are just my defaults
 RPC_USERNAME = "rosetta"
 RPC_PASSWORD = "rosetta"
 RPC_HOST = "localhost"
-RPC_POST = 118766 if TESTNET else 8766
+RPC_POST = 18766 if TESTNET else 8766
 SWAP_STORAGE_PATH = "orders.json"
 RPC_UNLOCK_PHRASE = "" #if needed
 
@@ -564,69 +566,6 @@ class PreviewTransactionDialog(QDialog):
     list.addItem(voutListItem)
     list.setItemWidget(voutListItem, voutListWidget)
 
-    
-
-
-class OrderDetailsDialog(QDialog):
-  def __init__(self, swap, swap_storage, parent=None, complete_mode=None, **kwargs):
-    super().__init__(parent, **kwargs)
-    uic.loadUi("orderdetails.ui", self)
-    self.swap = swap
-    self.swap_storage = swap_storage
-    self.complete_mode = complete_mode
-
-    if not self.complete_mode:
-      self.setWindowTitle("Order Details")
-      self.update_for_swap(self.swap)
-      self.txtSigned.setText(self.swap.raw)
-    else:
-      self.setWindowTitle("Preview Completion [1/2]")
-      #Allow user to edit and register listener for changes
-      self.txtSigned.setReadOnly(False)
-      self.txtSigned.textChanged.connect(self.raw_tx_changed)
-      self.buttonBox.removeButton(self.buttonBox.button(QDialogButtonBox.Ok))
-      self.confirm_button = self.buttonBox.addButton("Confirm", QDialogButtonBox.AcceptRole)
-
-  def update_for_swap(self, swap):
-    self.lblAsset.setText(swap.asset)
-    self.lblQuantity.setText(str(swap.quantity))
-    self.lblUnitPrice.setText("{:.8g} RVN".format(swap.unit_price))
-    self.lblType.setText(swap.type)
-    self.lblUTXO.setText(swap.utxo)
-    self.lblTotalPrice.setText("{:.8g} RVN".format(swap.totalPrice()))
-    self.txtDestination.setText(swap.destination)
-
-  def swap_error(self):
-    #Sell order means we are buying
-    if self.swap.type == "sell":
-      if self.swap.totalPrice() > self.swap_storage.balance:
-        return "You don't have enough RVN to purchase."
-    else:
-      if self.swap.asset not in self.swap_storage.my_asset_names:
-        return "You don't own that asset."
-      if self.swap.quantity > self.swap_storage.assets[self.swap.asset]["balance"]:
-        return "You don't own enough of that asset."
-
-  def raw_tx_changed(self):
-    if not self.complete_mode:
-      return
-
-    parsed = decode_swap(self.txtSigned.toPlainText())
-    if parsed:
-      self.swap = parsed
-      self.update_for_swap(self.swap)
-      err = self.swap_error()
-      if err:
-        show_error("Error!", err, parent=self)
-        self.confirm_button.setVisible(False)
-      else:
-        self.confirm_button.setVisible(True)
-
-    self.confirm_button.setEnabled(self.swap is not None)
-
-  def build_order(self):
-    return self.swap
-
 
 
 class NewOrderDialog(QDialog):
@@ -946,7 +885,12 @@ class MainWindow(QMainWindow):
 chain_info = do_rpc("getblockchaininfo")
 app = QApplication(sys.argv)
 
-if chain_info:
+#If the headers and blocks are not within 5 of each other,
+#then the chain is likely still syncing
+chain_updated = False if not chain_info else\
+  (chain_info["headers"] - chain_info["blocks"]) < 5
+
+if chain_info and chain_updated:
   swap_storage = SwapStorage()
   swap_storage.load_swaps()
   swap_storage.load_utxos()
@@ -956,6 +900,10 @@ if chain_info:
   app.exec_()
 
   swap_storage.save_swaps()
+elif chain_info:
+  show_error("Sync Error", 
+  "Server appears to not be fully synchronized. Must be at the latest tip to continue.",
+  "Network: {}\r\nCurrent Headers: {}\r\nCurrent Blocks: {}".format(chain_info["chain"], chain_info["headers"], chain_info["blocks"]))
 else:
   show_error("Error connecting", 
   "Error connecting to RPC server.\r\n{}".format(rpc_url), 
