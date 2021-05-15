@@ -15,7 +15,7 @@ TESTNET = True
 RPC_USERNAME = "rosetta"
 RPC_PASSWORD = "rosetta"
 RPC_HOST = "localhost"
-RPC_POST = 18766 if TESTNET else 8766
+RPC_POST = 118766 if TESTNET else 8766
 SWAP_STORAGE_PATH = "orders.json"
 RPC_UNLOCK_PHRASE = "" #if needed
 
@@ -25,13 +25,17 @@ tx_qry = "https://rvnt.cryptoscope.io/api/getrawtransaction/?txid={}&decode=1" i
 
 def do_rpc(method, log_error=True, **kwargs):
   req = Request(method, **kwargs)
-  resp = post(rpc_url, json=req)
-  if resp.status_code != 200:
-    print("==>", end="")
-    print(req)
-    print("<== ERR:", end="")
-    print(resp.text)
-  return json.loads(resp.text)["result"]
+  try:
+    resp = post(rpc_url, json=req)
+    if resp.status_code != 200:
+      print("==>", end="")
+      print(req)
+      print("<== ERR:", end="")
+      print(resp.text)
+    return json.loads(resp.text)["result"]
+  except:
+    print("RPC Error")
+    return None
 
 def decode_full(txid):
   resp = get(tx_qry.format(txid))
@@ -939,16 +943,23 @@ class MainWindow(QMainWindow):
     list.addItem(swapListItem)
     list.setItemWidget(swapListItem, swapListWidget)
     
-
-
-
-swap_storage = SwapStorage()
-swap_storage.load_swaps()
-swap_storage.load_utxos()
-
+chain_info = do_rpc("getblockchaininfo")
 app = QApplication(sys.argv)
-window = MainWindow(swap_storage)
-window.show()
-app.exec_()
 
-swap_storage.save_swaps()
+if chain_info:
+  swap_storage = SwapStorage()
+  swap_storage.load_swaps()
+  swap_storage.load_utxos()
+
+  window = MainWindow(swap_storage)
+  window.show()
+  app.exec_()
+
+  swap_storage.save_swaps()
+else:
+  show_error("Error connecting", 
+  "Error connecting to RPC server.\r\n{}".format(rpc_url), 
+  "Make sure the following configuration variables are in your raven.conf file"+
+  "\r\n\r\nserver=1\r\nrpcuser={}\r\nrpcpassword={}".format(RPC_USERNAME, RPC_PASSWORD))
+
+  
