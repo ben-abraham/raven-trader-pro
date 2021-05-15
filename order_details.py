@@ -16,7 +16,7 @@ from swap_transaction import SwapTransaction
 class OrderDetailsDialog(QDialog):
   def __init__(self, swap, swap_storage, parent=None, complete_mode=None, **kwargs):
     super().__init__(parent, **kwargs)
-    uic.loadUi("orderdetails.ui", self)
+    uic.loadUi("order_details.ui", self)
     self.swap = swap
     self.swap_storage = swap_storage
     self.complete_mode = complete_mode

@@ -11,6 +11,8 @@ import sys, getopt, argparse, json, time, getpass, os.path
 from util import *
 from rvn_rpc import *
 
+from swap_transaction import SwapTransaction
+
 class NewOrderDialog(QDialog):
   def __init__(self, mode, swap_storage, parent=None, **kwargs):
     super().__init__(parent, **kwargs)
