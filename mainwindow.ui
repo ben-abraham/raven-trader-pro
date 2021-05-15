@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+  <class>MainWindow</class>
+  <widget class="QMainWindow" name="MainWindow">
+    <property name="geometry">
+      <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>1024</width>
+        <height>768</height>
+      </rect>
+    </property>
+    <property name="windowTitle">
+      <string>MainWindow</string>
+    </property>
+    <widget class="QWidget" name="centralwidget">
+      <layout class="QVBoxLayout" name="mainVertical">
+        <property name="leftMargin">
+          <number>10</number>
+        </property>
+        <property name="topMargin">
+          <number>10</number>
+        </property>
+        <property name="rightMargin">
+          <number>10</number>
+        </property>
+        <property name="bottomMargin">
+          <number>10</number>
+        </property>
+        <item>
+          <widget class="QLabel" name="lblBalanceTotal">
+            <property name="text">
+              <string>Total Balance:</string>
+            </property>
+          </widget>
+        </item>
+        <item>
+          <widget class="QLabel" name="lblBalanceAvailable">
+            <property name="text">
+              <string>Available Balance:</string>
+            </property>
+          </widget>
+        </item>
+        <item>
+          <layout class="QHBoxLayout" name="orderLayout">
+            <property name="leftMargin">
+              <number>10</number>
+            </property>
+            <property name="topMargin">
+              <number>10</number>
+            </property>
+            <property name="rightMargin">
+              <number>10</number>
+            </property>
+            <property name="bottomMargin">
+              <number>10</number>
+            </property>
+            <item>
+              <layout class="QVBoxLayout" name="buyOrderLayout">
+              <property name="leftMargin">
+                <number>5</number>
+              </property>
+              <property name="topMargin">
+                <number>5</number>
+              </property>
+              <property name="rightMargin">
+                <number>5</number>
+              </property>
+              <property name="bottomMargin">
+                <number>5</number>
+              </property>
+              <item>
+                <widget class="QLabel" name="label">
+                <property name="text">
+                  <string>Buy Orders</string>
+                </property>
+                <property name="alignment">
+                  <set>Qt::AlignCenter</set>
+                </property>
+                </widget>
+              </item>
+                <item>
+                  <widget class="QPushButton" name="btnNewBuyOrder">
+                    <property name="text">
+                      <string>New Buy Order</string>
+                    </property>
+                  </widget>
+                </item>
+              <item>
+                <widget class="QListWidget" name="lstBuyOrders"/>
+              </item>
+              </layout>
+            </item>
+            <item>
+              <layout class="QVBoxLayout" name="verticalLayout_2">
+                <property name="leftMargin">
+                  <number>5</number>
+                </property>
+                <property name="topMargin">
+                  <number>5</number>
+                </property>
+                <property name="rightMargin">
+                  <number>5</number>
+                </property>
+                <property name="bottomMargin">
+                  <number>5</number>
+                </property>
+                <item>
+                  <widget class="QLabel" name="label_2">
+                    <property name="text">
+                      <string>Sell Orders</string>
+                    </property>
+                    <property name="alignment">
+                      <set>Qt::AlignCenter</set>
+                    </property>
+                  </widget>
+                </item>
+                <item>
+                  <widget class="QPushButton" name="btnNewSellOrder">
+                    <property name="text">
+                      <string>New Sell Order</string>
+                    </property>
+                  </widget>
+                </item>
+                <item>
+                  <widget class="QListWidget" name="lstSellOrders"/>
+                </item>
+              </layout>
+            </item>
+            <item>
+              <layout class="QVBoxLayout" name="pastOrderLayout">
+                <property name="leftMargin">
+                  <number>5</number>
+                </property>
+                <property name="topMargin">
+                  <number>5</number>
+                </property>
+                <property name="rightMargin">
+                  <number>5</number>
+                </property>
+                <property name="bottomMargin">
+                  <number>5</number>
+                </property>
+                <item>
+                  <widget class="QLabel" name="label">
+                    <property name="text">
+                      <string>Order History</string>
+                    </property>
+                    <property name="alignment">
+                      <set>Qt::AlignCenter</set>
+                    </property>
+                  </widget>
+                </item>
+                <item>
+                  <widget class="QPushButton" name="btnCompleteOrder">
+                    <property name="text">
+                      <string>Verify/Complete Order</string>
+                    </property>
+                  </widget>
+                </item>
+                <item>
+                  <widget class="QListWidget" name="lstPastOrders"/>
+                </item>
+              </layout>
+            </item>
+          </layout>
+        </item>
+      </layout>
+    </widget>
+    <widget class="QMenuBar" name="menubar">
+      <property name="geometry">
+      <rect>
+      <x>0</x>
+      <y>0</y>
+      <width>800</width>
+      <height>26</height>
+      </rect>
+      </property>
+    </widget>
+    <widget class="QStatusBar" name="statusbar"/>
+  </widget>
+  <resources/>
+  <connections/>
+</ui>
