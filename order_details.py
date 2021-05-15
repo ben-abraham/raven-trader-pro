@@ -8,6 +8,10 @@ from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
 import sys, getopt, argparse, json, time, getpass, os.path
+from util import *
+from rvn_rpc import *
+
+from swap_transaction import SwapTransaction
 
 class OrderDetailsDialog(QDialog):
   def __init__(self, swap, swap_storage, parent=None, complete_mode=None, **kwargs):
@@ -53,7 +57,7 @@ class OrderDetailsDialog(QDialog):
     if not self.complete_mode:
       return
 
-    parsed = decode_swap(self.txtSigned.toPlainText())
+    parsed = SwapTransaction.decode_swap(self.txtSigned.toPlainText())
     if parsed:
       self.swap = parsed
       self.update_for_swap(self.swap)
