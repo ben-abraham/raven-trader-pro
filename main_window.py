@@ -32,11 +32,38 @@ class MainWindow(QMainWindow):
 
     self.lstBuyOrders.itemDoubleClicked.connect(self.view_order_details)
     self.lstSellOrders.itemDoubleClicked.connect(self.view_order_details)
+    self.lstPastOrders.itemDoubleClicked.connect(self.view_order_details)
 
     self.updateTimer = QTimer(self)
     self.updateTimer.timeout.connect(self.mainWindowUpdate)
     self.updateTimer.start(10 * 1000)
     self.mainWindowUpdate()
+
+  def open_swap_menu(self, list, list_item, click_position, swap):
+    menu = QMenu()
+    widget_inner = list.itemWidget(list_item)
+    deatilsAction = menu.addAction("View Details")
+    removeSoftAction = menu.addAction("Remove Order - Soft")
+    removeHardAction = menu.addAction("Remove Order - Hard")
+    action = menu.exec_(widget_inner.mapToGlobal(click_position))
+    if action == deatilsAction:
+      print("View Details")
+      self.view_order_details(list_item)
+    elif action == removeSoftAction:
+      if(show_dialog("Soft Remove Trade Order?", 
+      "Would you like to soft-remove this trade order?\r\n"+
+      "A created order can be executed at any time once it has been announced, as long as the original UTXO remains valid.\r\n"+
+      "A soft-remove simply stops locking the UTXO and ignores it in software (anyone who recieved the order can still complete it).\r\n"+
+      "A hard remove will invalidate the previously-used UTXO by sending yourself a transaction using it.")):
+        print("Soft Removing Trade Order")
+
+    elif action == removeHardAction:
+      if(show_dialog("Hard Remove Trade Order?", 
+      "Would you like to hard-remove this trade order?\r\n"+
+      "A created order can be executed at any time once it has been announced, as long as the original UTXO remains valid.\r\n"+
+      "A soft-remove simply stops locking the UTXO and ignores it in software (anyone who recieved the order can still complete it).\r\n"+
+      "A hard remove will invalidate the previously-used UTXO by sending yourself a transaction using it.")):
+        print("Hard Remove Trade Order")
 
   def new_buy_order(self):
     buy_dialog = NewOrderDialog("buy", self.swap_storage, parent=self)
@@ -73,8 +100,7 @@ class MainWindow(QMainWindow):
     if(order_dialog.exec_()):
       partial_swap = order_dialog.build_order()
       finished_swap = partial_swap.complete_order(self.swap_storage)
-      #print("Swap: ", json.dumps(partial_swap.__dict__))
-      #print(finished_swap)
+      print("Swap: ", json.dumps(partial_swap.__dict__))
       
       preview_dialog = PreviewTransactionDialog(partial_swap, finished_swap, self.swap_storage, parent=self)
 
@@ -128,22 +154,34 @@ class MainWindow(QMainWindow):
           swap.txid = swap_txid
           self.swap_storage.save_swaps()
 
-    self.clear_list(self.lstBuyOrders)
-    self.clear_list(self.lstSellOrders)
-    self.clear_list(self.lstPastOrders)
+    self.add_update_swap_items(self.lstBuyOrders,       [swap for swap in self.swap_storage.swaps if swap.state == "new" and swap.type == "buy" ])
+    self.add_update_swap_items(self.lstSellOrders,      [swap for swap in self.swap_storage.swaps if swap.state == "new" and swap.type == "sell"])
+    self.add_update_swap_items(self.lstPastOrders,      [swap for swap in self.swap_storage.swaps if swap.state == "completed" and swap.own     ])
+    self.add_update_swap_items(self.lstCompletedOrders, [swap for swap in self.swap_storage.swaps if swap.state == "completed" and not swap.own ])
 
-    for swap in self.swap_storage.swaps:
-      if swap.state == "new":
-        if swap.type == "buy":
-          self.add_swap_item(self.lstBuyOrders, swap)
-        else:
-          self.add_swap_item(self.lstSellOrders, swap)
-      else:
-        self.add_swap_item(self.lstPastOrders, swap)
+  def add_update_swap_items(self, list, swap_list):
+    udpated_utxos = []
+    for idx in range(0, list.count()):
+      row = list.item(idx)
+      swap_details = list.itemWidget(row).getSwap()
+      self.add_update_swap_item(list, swap_details, existing=row)
+      udpated_utxos.append(swap_details.utxo)
+    for swap in swap_list:
+      if swap.utxo not in udpated_utxos:
+        self.add_update_swap_item(list, swap)
 
-  def add_swap_item(self, list, swap_details):
+  def add_update_swap_item(self, list, swap_details, existing=None):
+    if existing:
+      list.removeItemWidget(existing)
+
     swapListWidget = QTwoLineRowWidget.from_swap(swap_details)
-    swapListItem = QListWidgetItem(list)
+    swapListItem = existing if existing else QListWidgetItem(list)
     swapListItem.setSizeHint(swapListWidget.sizeHint())
-    list.addItem(swapListItem)
+
+    swapListWidget.setContextMenuPolicy(Qt.CustomContextMenu)
+    swapListWidget.customContextMenuRequested.connect(lambda pt: self.open_swap_menu(list, swapListItem, pt, swap_details))
+    
+    if not existing:
+      list.addItem(swapListItem)
+
     list.setItemWidget(swapListItem, swapListWidget)

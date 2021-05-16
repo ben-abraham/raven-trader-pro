@@ -77,11 +77,13 @@ class QTwoLineRowWidget (QWidget):
     else:
       row.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
         "Sell" if swap.own else "Bought", swap.quantity, swap.asset, swap.totalPrice(), swap.unit_price))
-    if swap.state != "new":
+    if swap.state == "completed":
       if not swap.own:
         row.setTextDown("Completed: {}".format(swap.txid))
       else:
         row.setTextDown("Executed: {}".format(swap.txid))
+    elif swap.state == "removed":
+      row.setTextDown("Removed")
     return row
 
   @staticmethod

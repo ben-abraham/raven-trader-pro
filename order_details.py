@@ -25,6 +25,7 @@ class OrderDetailsDialog(QDialog):
       self.setWindowTitle("Order Details")
       self.update_for_swap(self.swap)
       self.txtSigned.setText(self.swap.raw)
+      self.buttonBox.removeButton(self.buttonBox.button(QDialogButtonBox.Ok))
     else:
       self.setWindowTitle("Preview Completion [1/2]")
       #Allow user to edit and register listener for changes

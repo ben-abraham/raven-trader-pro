@@ -6,8 +6,8 @@
       <rect>
         <x>0</x>
         <y>0</y>
-        <width>1024</width>
-        <height>768</height>
+        <width>1200</width>
+        <height>800</height>
       </rect>
     </property>
     <property name="windowTitle">
@@ -152,6 +152,35 @@
                   </widget>
                 </item>
                 <item>
+                  <widget class="QListWidget" name="lstPastOrders"/>
+                </item>
+              </layout>
+            </item>
+            <item>
+              <layout class="QVBoxLayout" name="completedOrderLayout">
+                <property name="leftMargin">
+                  <number>5</number>
+                </property>
+                <property name="topMargin">
+                  <number>5</number>
+                </property>
+                <property name="rightMargin">
+                  <number>5</number>
+                </property>
+                <property name="bottomMargin">
+                  <number>5</number>
+                </property>
+                <item>
+                  <widget class="QLabel" name="label">
+                    <property name="text">
+                      <string>Completed Order History</string>
+                    </property>
+                    <property name="alignment">
+                      <set>Qt::AlignCenter</set>
+                    </property>
+                  </widget>
+                </item>
+                <item>
                   <widget class="QPushButton" name="btnCompleteOrder">
                     <property name="text">
                       <string>Verify/Complete Order</string>
@@ -159,7 +188,7 @@
                   </widget>
                 </item>
                 <item>
-                  <widget class="QListWidget" name="lstPastOrders"/>
+                  <widget class="QListWidget" name="lstCompletedOrders"/>
                 </item>
               </layout>
             </item>
