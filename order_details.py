@@ -25,7 +25,7 @@ class OrderDetailsDialog(QDialog):
       self.setWindowTitle("Order Details")
       self.update_for_swap(self.swap)
       self.txtSigned.setText(self.swap.raw)
-      self.buttonBox.removeButton(self.buttonBox.button(QDialogButtonBox.Ok))
+      self.buttonBox.removeButton(self.buttonBox.button(QDialogButtonBox.Cancel))
     else:
       self.setWindowTitle("Preview Completion [1/2]")
       #Allow user to edit and register listener for changes
@@ -35,10 +35,15 @@ class OrderDetailsDialog(QDialog):
       self.confirm_button = self.buttonBox.addButton("Confirm", QDialogButtonBox.AcceptRole)
 
   def update_for_swap(self, swap):
+    self.lblMine.setText("Yes" if swap.own else "No")
+    self.lblStatus.setText(swap.state)
+    if swap.own:
+      self.lblType.setText("Buy" if swap.type == "buy" else "Sell")
+    else:
+      self.lblType.setText("Sale" if swap.type == "buy" else "Purchase")
     self.lblAsset.setText(swap.asset)
     self.lblQuantity.setText(str(swap.quantity))
     self.lblUnitPrice.setText("{:.8g} RVN".format(swap.unit_price))
-    self.lblType.setText(swap.type)
     self.lblUTXO.setText(swap.utxo)
     self.lblTotalPrice.setText("{:.8g} RVN".format(swap.totalPrice()))
     self.txtDestination.setText(swap.destination)

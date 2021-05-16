@@ -108,7 +108,7 @@ class SwapTransaction():
       print("Completing Sale of {} x [{}] for {} RVN".format(self.quantity, self.asset, self.totalPrice()))
       
       #Search for valid UTXO, no need for exact match
-      asset_utxo = swap_storage.find_utxo("asset", self.quantity, name=self.asset, exact=False)
+      asset_utxo = swap_storage.find_utxo("asset", self.quantity, name=self.asset, exact=False, skip_locks=True)
       if(not asset_utxo):
         print("Unable to find a single UTXO for purchasing. Does not combine automatically yet")
         exit()

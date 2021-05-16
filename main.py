@@ -33,13 +33,16 @@ if __name__ == "__main__":
 
   if chain_info and chain_updated:
     swap_storage = SwapStorage()
+    swap_storage.load_locked()
     swap_storage.load_swaps()
     swap_storage.load_utxos()
+    swap_storage.refresh_locks()
 
     window = MainWindow(swap_storage)
     window.show()
     app.exec_()
 
+    swap_storage.save_locked()
     swap_storage.save_swaps()
   elif chain_info:
     show_error("Sync Error", 

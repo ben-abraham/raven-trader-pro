@@ -18,9 +18,9 @@ class SwapStorage:
   def __init__ (self):
     super()
     self.swaps = []
+    self.locks = []
   
   def load_swaps(self):
-    global SWAP_STORAGE_PATH
     if not os.path.isfile(SWAP_STORAGE_PATH):
       return []
     fSwap = open(SWAP_STORAGE_PATH, mode="r")
@@ -29,6 +29,58 @@ class SwapStorage:
     self.swaps = json.loads(swapJson, object_hook=SwapTransaction)
     print("Loaded {} swaps from disk".format(len(self.swaps)))
     return self.swaps
+
+  def save_swaps(self):
+    swapJson = json.dumps(self.swaps, default=lambda o: o.__dict__, indent=2)
+    fSwap = open(SWAP_STORAGE_PATH, mode="w")
+    fSwap.truncate()
+    fSwap.write(swapJson)
+    fSwap.flush()
+    fSwap.close()
+  
+  def load_locked(self):
+    if not os.path.isfile(LOCK_STORAGE_PATH):
+      return []
+    fLock = open(LOCK_STORAGE_PATH, mode="r")
+    lockJson = fLock.read()
+    fLock.close()
+    self.locks = json.loads(lockJson)
+    print("Loaded {} locks from disk".format(len(self.locks)))
+    return self.locks
+
+  def save_locked(self):
+    lockJson = json.dumps(self.locks, default=lambda o: o.__dict__, indent=2)
+    fLock = open(LOCK_STORAGE_PATH, mode="w")
+    fLock.truncate()
+    fLock.write(lockJson)
+    fLock.flush()
+    fLock.close()
+
+  def add_swap(self, swap):
+    self.swaps.append(swap)
+    utxo_parts = swap.utxo.split("|")
+    self.add_lock(utxo_parts[0], int(utxo_parts[1]))
+
+  def add_lock(self, txid, vout):
+    for lock in self.locks:
+      if txid == lock["txid"] and vout == lock["vout"]:
+        return #Already added
+    print("Locking UTXO {}|{}".format(txid, vout))
+    for utxo in self.utxos:
+      if txid == utxo["txid"] and vout == utxo["vout"]:
+        self.locks.append({"txid": txid, "vout": vout, "type": "rvn", "amount": utxo["amount"]})
+        return #Locking ravencoin
+    for asset in self.my_asset_names:
+      for a_utxo in self.assets[asset]["outpoints"]:
+        if txid == a_utxo["txid"] and vout == a_utxo["vout"]:
+          self.locks.append({"txid": txid, "vout": vout, "type": "asset", "asset": asset, "amount": a_utxo["amount"]})
+          return #Locking assets
+
+  def refresh_locks(self):
+    for swap in self.swaps:
+      if swap.state == "new":
+        utxo_parts = swap.utxo.split("|")
+        self.add_lock(utxo_parts[0], int(utxo_parts[1]))
 
   def load_utxos(self):
     #Locked UTXO's are excluded from the list command
@@ -43,10 +95,11 @@ class SwapStorage:
       total_balance += utxo["amount"]
     self.balance = total_balance
 
-  def find_utxo(self, type, quantity, name=None, exact=True):
+  def find_utxo(self, type, quantity, name=None, exact=True, skip_locks=False):
+    #print("Find UTXO: {} Exact: {} Skip Locks: {}".format(quantity, exact, skip_locks))
     if type == "rvn":
       for rvn_utxo in self.utxos:
-        if(self.is_taken(rvn_utxo)):
+        if(self.is_taken(rvn_utxo, skip_locks)):
           continue
         if(float(rvn_utxo["amount"]) == float(quantity) and exact) or (rvn_utxo["amount"] >= quantity and not exact):
           return rvn_utxo
@@ -56,7 +109,7 @@ class SwapStorage:
         if(matching_asset["balance"] < quantity):
           return None
         for asset_utxo in matching_asset["outpoints"]:
-          if(self.is_taken(asset_utxo)):
+          if(self.is_taken(asset_utxo, skip_locks)):
             continue
           if(float(asset_utxo["amount"]) == float(quantity) and exact) or (asset_utxo["amount"] >= quantity and not exact):
             return asset_utxo
@@ -95,34 +148,37 @@ class SwapStorage:
   def wallet_unlock_all(self):
     do_rpc("lockunspent", unlock=True)
 
-  def is_taken(self, utxo):
+  def is_taken(self, utxo, skip_locks=False):
+    if not skip_locks:
+      for lock in self.locks:
+        if lock["txid"] == utxo["txid"] and lock["vout"] == utxo["vout"]:
+          return True
     for swap in self.swaps:
       expected = "{}|{}".format(utxo["txid"], utxo["vout"])
       if swap.utxo == expected:
         return True
     return False
 
-  def locaked_rvn(self):
+  def locaked_rvn(self, only_orders=True):
     total = 0
-    for swap in self.swaps:
-      if swap.type == "buy" and swap.state == "new":
-        total += swap.totalPrice()
+    if only_orders:
+      for swap in self.swaps:
+        if swap.type == "buy" and swap.state == "new":
+          total += swap.totalPrice()
+    else:
+      for lock in self.locks:
+        if lock["type"] == "rvn":
+          total += lock["amount"]
     return total
 
-  def locaked_assets(self):
+  def locaked_assets(self, only_orders=True):
     total = 0
-    for swap in self.swaps:
-      if swap.type == "sell" and swap.state == "new":
-        total += swap.quantity
+    if only_orders:
+      for swap in self.swaps:
+        if swap.type == "sell" and swap.state == "new":
+          total += swap.quantity
+    else:
+      for lock in self.locks:
+        if lock["type"] == "asset":
+          total += lock["amount"]
     return total
-
-  def add_swap(self, swap):
-    self.swaps.append(swap)
-
-  def save_swaps(self):
-    global SWAP_STORAGE_PATH
-    fSwap = open(SWAP_STORAGE_PATH, mode="w")
-    fSwap.truncate()
-    json.dump(self.swaps, fSwap, default=lambda o: o.__dict__, indent=2)
-    fSwap.flush()
-    fSwap.close()

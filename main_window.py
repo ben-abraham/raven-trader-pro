@@ -33,6 +33,7 @@ class MainWindow(QMainWindow):
     self.lstBuyOrders.itemDoubleClicked.connect(self.view_order_details)
     self.lstSellOrders.itemDoubleClicked.connect(self.view_order_details)
     self.lstPastOrders.itemDoubleClicked.connect(self.view_order_details)
+    self.lstCompletedOrders.itemDoubleClicked.connect(self.view_order_details)
 
     self.updateTimer = QTimer(self)
     self.updateTimer.timeout.connect(self.mainWindowUpdate)
@@ -56,7 +57,7 @@ class MainWindow(QMainWindow):
       "A soft-remove simply stops locking the UTXO and ignores it in software (anyone who recieved the order can still complete it).\r\n"+
       "A hard remove will invalidate the previously-used UTXO by sending yourself a transaction using it.")):
         print("Soft Removing Trade Order")
-
+        show_dialog("Sorry", "Not implemented yet :^)")
     elif action == removeHardAction:
       if(show_dialog("Hard Remove Trade Order?", 
       "Would you like to hard-remove this trade order?\r\n"+
@@ -64,6 +65,7 @@ class MainWindow(QMainWindow):
       "A soft-remove simply stops locking the UTXO and ignores it in software (anyone who recieved the order can still complete it).\r\n"+
       "A hard remove will invalidate the previously-used UTXO by sending yourself a transaction using it.")):
         print("Hard Remove Trade Order")
+        show_dialog("Sorry", "Not implemented yet :^)")
 
   def new_buy_order(self):
     buy_dialog = NewOrderDialog("buy", self.swap_storage, parent=self)
@@ -108,11 +110,11 @@ class MainWindow(QMainWindow):
         print("Transaction Approved. Sending!")
         submitted_txid = do_rpc("sendrawtransaction", hexstring=finished_swap)
         partial_swap.txid = submitted_txid
-        partial_swap.state = "completed"
+        partial_swap.state = "completed" #TODO: Add waiting on confirmation phase
         #Add a completed swap to the list.
         #it's internally tracked from an external source
         self.swap_storage.add_swap(partial_swap)
-
+        self.update_lists()
       else:
         print("Transaction Rejected")
 
@@ -160,15 +162,20 @@ class MainWindow(QMainWindow):
     self.add_update_swap_items(self.lstCompletedOrders, [swap for swap in self.swap_storage.swaps if swap.state == "completed" and not swap.own ])
 
   def add_update_swap_items(self, list, swap_list):
-    udpated_utxos = []
+    existing_rows = {}
+    seen_utxos = []
     for idx in range(0, list.count()):
       row = list.item(idx)
       swap_details = list.itemWidget(row).getSwap()
-      self.add_update_swap_item(list, swap_details, existing=row)
-      udpated_utxos.append(swap_details.utxo)
+      existing_rows[swap_details.utxo] = self.add_update_swap_item(list, swap_details, existing=row)
+    existing_utxos = [*existing_rows.keys()]
     for swap in swap_list:
-      if swap.utxo not in udpated_utxos:
+      seen_utxos.append(swap.utxo)
+      if swap.utxo not in existing_utxos:
         self.add_update_swap_item(list, swap)
+    for old_utxo in [utxo for utxo in existing_utxos if utxo not in seen_utxos]:
+      item_row = list.row(existing_rows[old_utxo])
+      list.takeItem(item_row)
 
   def add_update_swap_item(self, list, swap_details, existing=None):
     if existing:
@@ -185,3 +192,4 @@ class MainWindow(QMainWindow):
       list.addItem(swapListItem)
 
     list.setItemWidget(swapListItem, swapListWidget)
+    return swapListItem
