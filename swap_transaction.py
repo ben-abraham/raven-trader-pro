@@ -42,7 +42,7 @@ class SwapTransaction():
   #This is run by Bob when he wants to complete an order
   def complete_order(self, swap_storage):
     final_vin = [{"txid":self.decoded["vin"]["txid"], "vout":self.decoded["vin"]["vout"], "sequence":self.decoded["vin"]["sequence"]}]
-    final_vout = {self.decoded["vout"]["scriptPubKey"]["addresses"][0]:self.decoded["vout_data"]}
+    final_vout = {self.destination:self.decoded["vout_data"]}
 
     tx_allowed = False
     tx_final = None
@@ -52,36 +52,45 @@ class SwapTransaction():
 
     if self.type == "sell":
       #Sale order means WE are purchasing
-      print("Completing Sale of {} x [{}] for {} RVN".format(self.quantity, self.asset, self.totalPrice()))
+      print("You are purchasing {} x [{}] for {} RVN".format(self.quantity, self.asset, self.totalPrice()))
 
       #Add our destination for assets
-      #NOTE: self.destination is where the assets are going, not our wallet
+      #NOTE: self.destination is where our raven is going, not our destination for assets
       #hence the call to getnewaddress. Should support explicitly setting from the user
       target_addr = do_rpc("getnewaddress")
       print("Assets are being sent to {}".format(target_addr))
       final_vout[target_addr] = make_transfer(self.asset, self.quantity)
 
+      quick_fee = 2 * (0.01 * len(self.raw) / 2/ 1024) #Double the cost of the 1vin:1vout should be good enough to find a utxo set
+      change_addr = do_rpc("getnewaddress")
+      print("Change is being sent to {}".format(change_addr))
+      final_vout[change_addr] = round(quick_fee, 8)
+
+      utxo_set = swap_storage.find_utxo_set("rvn", self.totalPrice() + quick_fee)
+      for utxo in utxo_set:
+        final_vin.append({"txid":utxo["txid"],"vout":utxo["vout"]})
+
       #Build final combined raw transaction
       final_raw = do_rpc("createrawtransaction", inputs=final_vin, outputs=final_vout)
 
       #Fund the transaction, this will cover both the purchase debit and any fees
-      funded_tx = do_rpc("fundrawtransaction", hexstring=final_raw, options={'changePosition':1})
+#      funded_tx = do_rpc("fundrawtransaction", hexstring=final_raw, options={'changePosition':1})
 
-      funded_dec = do_rpc("decoderawtransaction", hexstring=funded_tx["hex"])
+      funded_dec = do_rpc("decoderawtransaction", hexstring=final_raw)#funded_tx["hex"])
       funded_vin, funded_vout = dup_transaction(funded_dec)
       vout_keys = [*funded_vout.keys()]
 
-      estimated_fee = 0.01 * len(funded_tx["hex"]) / 2 / 1024 #2 hex chars = 1 byte
+      estimated_fee = 0.01 * len(final_raw) / 2 / 1024 #2 hex chars = 1 byte
 
-      calculated_change = funded_vout[vout_keys[1]] 
+      calculated_change = funded_vout[change_addr]
       fee_test = calculated_change - estimated_fee
 
       print("Funded TX")
-      print(funded_tx["hex"])
+      print(final_raw)
 
       #Jenky AF, no great way to estimate raw fee from rpc, so lower and test in mempool until good
       while fee_test > 0:
-        funded_vout[vout_keys[1]] = round(fee_test, 8)
+        funded_vout[change_addr] = round(fee_test, 8)
 
         dup_funded = do_rpc("createrawtransaction", inputs=funded_vin, outputs=funded_vout)
 
@@ -111,7 +120,7 @@ class SwapTransaction():
           break
     elif self.type == "buy":
       #Buy order means WE are selling
-      print("Completing Sale of {} x [{}] for {} RVN".format(self.quantity, self.asset, self.totalPrice()))
+      print("You are selling {} x [{}] for {} RVN".format(self.quantity, self.asset, self.totalPrice()))
       
       #Search for valid UTXO, no need for exact match
       asset_utxo = swap_storage.find_utxo("asset", self.quantity, name=self.asset, exact=False, skip_locks=True)

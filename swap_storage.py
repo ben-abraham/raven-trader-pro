@@ -89,31 +89,90 @@ class SwapStorage:
     #Pull list of assets for selecting
     self.assets = do_rpc("listmyassets", asset="", verbose=True)
     self.my_asset_names = [*self.assets.keys()]
+    #Cheat a bit and embed the asset name in it's metadata. This simplified things later
+    for name in self.my_asset_names:
+      self.assets[name]["name"] = name
 
     total_balance = 0
     for utxo in self.utxos:
       total_balance += utxo["amount"]
     self.balance = total_balance
 
-  def find_utxo(self, type, quantity, name=None, exact=True, skip_locks=False):
+  def find_utxo(self, type, quantity, name=None, exact=True, skip_locks=False, skip_rounded=True, sort_utxo=False):
     #print("Find UTXO: {} Exact: {} Skip Locks: {}".format(quantity, exact, skip_locks))
     if type == "rvn":
-      for rvn_utxo in self.utxos:
+      utxo_src = sorted([utxo for utxo in self.utxos], key=lambda utxo: utxo["amount"]) if sort_utxo else self.utxos
+      for rvn_utxo in utxo_src:
         if(self.is_taken(rvn_utxo, skip_locks)):
           continue
-        if(float(rvn_utxo["amount"]) == float(quantity) and exact) or (rvn_utxo["amount"] >= quantity and not exact):
+        utxo_amount = float(rvn_utxo["amount"])
+        if(skip_rounded and round(utxo_amount, 0) == utxo_amount):
+          continue #Default-Optionally skip ravencoin transfers of exact amounts. there are *likely* missed trade UTXO's
+        if(utxo_amount == float(quantity) and exact) or (rvn_utxo["amount"] >= quantity and not exact):
           return rvn_utxo
     elif type == "asset":
       matching_asset = self.assets[name]
       if(matching_asset):
         if(matching_asset["balance"] < quantity):
           return None
+        utxo_src = sorted(matching_asset["outpoints"], key=lambda a_utxo: a_utxo["amount"]) if sort_utxo else matching_asset["outpoints"]
         for asset_utxo in matching_asset["outpoints"]:
           if(self.is_taken(asset_utxo, skip_locks)):
             continue
           if(float(asset_utxo["amount"]) == float(quantity) and exact) or (asset_utxo["amount"] >= quantity and not exact):
             return asset_utxo
     return None
+
+  def find_utxo_set(self, type, quantity, mode="combine", name=None, skip_locks=False):
+    print("Finding UTXO set for {} {}".format(quantity, type))
+    found_set = None
+    total = 0
+
+    sorted_set = []
+    if type == "rvn":
+      sorted_set = sorted([utxo for utxo in self.utxos], key=lambda utxo: utxo["amount"])
+    elif type == "asset":
+      sorted_set = sorted(self.assets[name]["outpoints"], key=lambda utxo: utxo["amount"])
+
+    if mode == "combine":
+      #Try to combine as many UTXO's as possible into a single Transaction
+      #This raises your transaction fees slighty (more data) but is ultimately a good thing for the network
+      #Don't need to do anything actualy b/c default behavior is to go smallest-to-largest
+      found_set = None #noop
+    elif mode == "minimize":
+      #Minimize the number of UTXO's used, to reduce transaction fees
+      #This minimizes transaction fees but
+      quick_check = self.find_utxo(type, quantity, name=name, skip_locks=skip_locks, exact=False, sort_utxo=True)
+      quick_check_2 = self.find_utxo(type, quantity, name=name, skip_locks=skip_locks, exact=False, skip_rounded=False, sort_utxo=True)
+      if quick_check:
+        #If we have a single UTXO big enough, just use it and get change. sort_utxo ensures we find the smallest first
+        found_set = [quick_check]
+        total = quick_check["amount"]
+      elif quick_check_2:
+        #In this case we had a large enough single UTXO but it was an evenly rounded one (and no un-rounded ones existed)
+        found_set = [quick_check_2]
+        total = quick_check_2["amount"]
+      else:
+        #Just need to reverse the search to make it build from the fewest UTXO's
+        sorted_set.reverse()
+
+    if found_set == None:
+      found_set = []
+      while total < quantity and len(sorted_set) > 0:
+        removed = sorted_set.pop(0)
+        total += removed["amount"]
+        found_set.append(removed)
+
+    if total >= quantity:
+      print("Num UTXO: {}".format(len(found_set)))
+      print("Total: {}".format(total))
+      print("Change: {}".format(total - quantity))
+      return found_set
+    else:
+      print("Not enough funds found")
+      print("Total: {}".format(total))
+      print("Missing: {}".format(total - quantity))
+      return None
 
   #check if a swap's utxo is still unspent
   #if not then the swap has been executed!

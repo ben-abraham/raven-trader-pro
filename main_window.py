@@ -160,6 +160,24 @@ class MainWindow(QMainWindow):
     self.add_update_swap_items(self.lstSellOrders,      [swap for swap in self.swap_storage.swaps if swap.state == "new" and swap.type == "sell"])
     self.add_update_swap_items(self.lstPastOrders,      [swap for swap in self.swap_storage.swaps if swap.state == "completed" and swap.own     ])
     self.add_update_swap_items(self.lstCompletedOrders, [swap for swap in self.swap_storage.swaps if swap.state == "completed" and not swap.own ])
+    
+    self.add_update_asset_items(self.lstMyAssets,       [self.swap_storage.assets[asset_name] for asset_name in self.swap_storage.my_asset_names])
+
+  def add_update_asset_items(self, list, asset_list):
+    existing_rows = {}
+    seen_assets = []
+    for idx in range(0, list.count()):
+      row = list.item(idx)
+      asset_details = list.itemWidget(row).getAsset()
+      existing_rows[asset_details["name"]] = self.add_update_list_widget(list, asset_details, QTwoLineRowWidget.from_asset, self.open_swap_menu, existing=row)
+    existing_assets = [*existing_rows.keys()]
+    for asset in asset_list:
+      seen_assets.append(asset["name"])
+      if asset["name"] not in existing_assets:
+        self.add_update_list_widget(list, asset, QTwoLineRowWidget.from_asset, self.open_swap_menu)
+    for old_name in [name for name in existing_assets if name not in seen_assets]:
+      item_row = list.row(existing_rows[old_name])
+      list.takeItem(item_row)
 
   def add_update_swap_items(self, list, swap_list):
     existing_rows = {}
@@ -167,29 +185,29 @@ class MainWindow(QMainWindow):
     for idx in range(0, list.count()):
       row = list.item(idx)
       swap_details = list.itemWidget(row).getSwap()
-      existing_rows[swap_details.utxo] = self.add_update_swap_item(list, swap_details, existing=row)
+      existing_rows[swap_details.utxo] = self.add_update_list_widget(list, swap_details, QTwoLineRowWidget.from_swap, self.open_swap_menu, existing=row)
     existing_utxos = [*existing_rows.keys()]
     for swap in swap_list:
       seen_utxos.append(swap.utxo)
       if swap.utxo not in existing_utxos:
-        self.add_update_swap_item(list, swap)
+        self.add_update_list_widget(list, swap, QTwoLineRowWidget.from_swap, self.open_swap_menu)
     for old_utxo in [utxo for utxo in existing_utxos if utxo not in seen_utxos]:
       item_row = list.row(existing_rows[old_utxo])
       list.takeItem(item_row)
 
-  def add_update_swap_item(self, list, swap_details, existing=None):
+  def add_update_list_widget(self, list, widget_data, fn_widget_generator, fn_context_menu, existing=None):
     if existing:
       list.removeItemWidget(existing)
 
-    swapListWidget = QTwoLineRowWidget.from_swap(swap_details)
-    swapListItem = existing if existing else QListWidgetItem(list)
-    swapListItem.setSizeHint(swapListWidget.sizeHint())
+    list_widget = fn_widget_generator(widget_data)
+    list_item = existing if existing else QListWidgetItem(list)
+    list_item.setSizeHint(list_widget.sizeHint())
 
-    swapListWidget.setContextMenuPolicy(Qt.CustomContextMenu)
-    swapListWidget.customContextMenuRequested.connect(lambda pt: self.open_swap_menu(list, swapListItem, pt, swap_details))
+    list_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+    list_widget.customContextMenuRequested.connect(lambda pt: fn_context_menu(list, list_item, pt, widget_data))
     
     if not existing:
-      list.addItem(swapListItem)
+      list.addItem(list_item)
 
-    list.setItemWidget(swapListItem, swapListWidget)
-    return swapListItem
+    list.setItemWidget(list_item, list_widget)
+    return list_item

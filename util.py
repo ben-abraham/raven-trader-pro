@@ -106,8 +106,20 @@ class QTwoLineRowWidget (QWidget):
 
     return row
 
+  @staticmethod
+  def from_asset(asset_data):
+    row = QTwoLineRowWidget()
+    row.asset_data = asset_data
+
+    row.setTextUp("[{}] {}".format(asset_data["name"], asset_data["balance"]))
+
+    return row
+
   def getSwap (self):
     return self.swap
+
+  def getAsset(self):
+    return self.asset_data
 
   def setTextUp (self, text):
     self.textUpQLabel.setText(text)

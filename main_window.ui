@@ -6,7 +6,7 @@
       <rect>
         <x>0</x>
         <y>0</y>
-        <width>1200</width>
+        <width>1400</width>
         <height>800</height>
       </rect>
     </property>
@@ -55,6 +55,35 @@
             <property name="bottomMargin">
               <number>10</number>
             </property>
+            <item>
+              <layout class="QVBoxLayout" name="assetLayout">
+              <property name="leftMargin">
+                <number>5</number>
+              </property>
+              <property name="topMargin">
+                <number>5</number>
+              </property>
+              <property name="rightMargin">
+                <number>5</number>
+              </property>
+              <property name="bottomMargin">
+                <number>5</number>
+              </property>
+              <item>
+                <widget class="QLabel" name="label">
+                <property name="text">
+                  <string>My Assets</string>
+                </property>
+                <property name="alignment">
+                  <set>Qt::AlignCenter</set>
+                </property>
+                </widget>
+              </item>
+              <item>
+                <widget class="QListWidget" name="lstMyAssets"/>
+              </item>
+              </layout>
+            </item>
             <item>
               <layout class="QVBoxLayout" name="buyOrderLayout">
               <property name="leftMargin">
