@@ -44,7 +44,7 @@ def dup_transaction(tx):
   new_vout = {}
   for old_vin in tx["vin"]:
     new_vin.append({"txid": old_vin["txid"], "vout": old_vin["vout"], "sequence": old_vin["sequence"]})
-  for old_vout in tx["vout"]:
+  for old_vout in sorted(tx["vout"], key=lambda vo: vo["n"]):
     vout_script = old_vout["scriptPubKey"]
     vout_addr = vout_script["addresses"][0]
     if(vout_script["type"] == "transfer_asset"):

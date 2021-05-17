@@ -54,9 +54,12 @@ class SwapTransaction():
       #Sale order means WE are purchasing
       print("Completing Sale of {} x [{}] for {} RVN".format(self.quantity, self.asset, self.totalPrice()))
 
-
       #Add our destination for assets
-      final_vout[self.destination] = make_transfer(self.asset, self.quantity)
+      #NOTE: self.destination is where the assets are going, not our wallet
+      #hence the call to getnewaddress. Should support explicitly setting from the user
+      target_addr = do_rpc("getnewaddress")
+      print("Assets are being sent to {}".format(target_addr))
+      final_vout[target_addr] = make_transfer(self.asset, self.quantity)
 
       #Build final combined raw transaction
       final_raw = do_rpc("createrawtransaction", inputs=final_vin, outputs=final_vout)
@@ -72,6 +75,9 @@ class SwapTransaction():
 
       calculated_change = funded_vout[vout_keys[1]] 
       fee_test = calculated_change - estimated_fee
+
+      print("Funded TX")
+      print(funded_tx["hex"])
 
       #Jenky AF, no great way to estimate raw fee from rpc, so lower and test in mempool until good
       while fee_test > 0:
@@ -117,7 +123,7 @@ class SwapTransaction():
       final_vin.append({"txid":asset_utxo["txid"], "vout":asset_utxo["vout"]})
 
       #NOTE: self.destination is where the assets are going, not our wallet
-      #hence the call to getnewaddress
+      #hence the call to getnewaddress. Should support explicitly setting from the user
       target_addr = do_rpc("getnewaddress")
       print("Funds are being sent to {}".format(target_addr))
 
@@ -184,28 +190,30 @@ class SwapTransaction():
         print("Transaction not signed with SINGLE|ANYONECANPAY")
         return None
 
-      src_vin = parsed["vin"][0]
-      src_vout = parsed["vout"][0]
+      swap_vin = parsed["vin"][0]
+      swap_vout = parsed["vout"][0]
 
-      order_type = "buy" if src_vout["scriptPubKey"]["type"] == "transfer_asset" else "sell"
-      vin_tx = decode_full(src_vin["txid"])
+      order_type = "buy" if swap_vout["scriptPubKey"]["type"] == "transfer_asset" else "sell"
+      #Decode full here because we liekly don't have this transaction in our mempool
+      #And we probably aren't runnin a full node
+      vin_tx = decode_full(swap_vin["txid"])
       
       #If nothing comes back this is likely a testnet tx on mainnet of vice-versa
       if not vin_tx:
         print("Unable to find transaction. Is this for the correct network?")
         return None
 
-      vin_vout = vin_tx["vout"][src_vin["vout"]]
+      src_vout = vin_tx["vout"][swap_vin["vout"]]
       
       #Pull asset data based on order type
       if order_type == "sell":
-        vout_data = src_vout["value"]
-        asset_data = vin_vout["scriptPubKey"]["asset"]
+        vout_data = swap_vout["value"]
+        asset_data = src_vout["scriptPubKey"]["asset"]
         total_price = vout_data
       else:
-        asset_data = src_vout["scriptPubKey"]["asset"]
+        asset_data = swap_vout["scriptPubKey"]["asset"]
         vout_data = make_transfer(asset_data["name"], asset_data["amount"])
-        total_price = vin_vout["value"]
+        total_price = src_vout["value"]
 
       unit_price = float(total_price) / float(asset_data["amount"])
 
@@ -214,16 +222,16 @@ class SwapTransaction():
         "own": False,
         "quantity": float(asset_data['amount']),
         "unit_price": unit_price,
-        "utxo": src_vin["txid"] + "|" + str(src_vin["vout"]),
-        "destination": src_vout["scriptPubKey"]["addresses"][0],
+        "utxo": swap_vin["txid"] + "|" + str(swap_vin["vout"]),
+        "destination": swap_vout["scriptPubKey"]["addresses"][0],
         "state": "new",
         "type": order_type,
         "raw": raw_swap,
         "txid": ""
       },{
-        "vin": src_vin,
-        "vout": src_vout,
-        "src_vout": vin_vout,
+        "vin": swap_vin,
+        "vout": swap_vout,
+        "src_vout": src_vout,
         "vout_data": vout_data,
         "from_tx": vin_tx
       })
