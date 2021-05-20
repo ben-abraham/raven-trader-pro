@@ -14,7 +14,7 @@ from rvn_rpc import *
 from swap_transaction import SwapTransaction
 
 class NewOrderDialog(QDialog):
-  def __init__(self, mode, swap_storage, parent=None, **kwargs):
+  def __init__(self, mode, swap_storage, prefill=None, parent=None, **kwargs):
     super().__init__(parent, **kwargs)
     uic.loadUi("new_order.ui", self)
     self.mode = mode
@@ -39,6 +39,11 @@ class NewOrderDialog(QDialog):
       self.cmbAssets.setEditable(False)
       self.cmbAssets.addItems(["{} [{}]".format(v, self.swap_storage.assets[v]["balance"]) for v in self.swap_storage.my_asset_names])
       self.btnCheckAvailable.setVisible(False)
+
+    if prefill:
+      self.cmbAssets.setCurrentText(prefill["asset"])
+      self.spinQuantity.setValue(prefill["quantity"])
+      self.spinUnitPrice.setValue(prefill["unit_price"])
 
     self.cmbAssets.currentIndexChanged.connect(self.update)
     self.spinQuantity.valueChanged.connect(self.update)

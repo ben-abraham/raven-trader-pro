@@ -67,8 +67,19 @@ class MainWindow(QMainWindow):
         print("Hard Remove Trade Order")
         show_dialog("Sorry", "Not implemented yet :^)")
 
-  def new_buy_order(self):
-    buy_dialog = NewOrderDialog("buy", self.swap_storage, parent=self)
+  def open_asset_menu(self, list, list_item, click_position, asset):
+    menu = QMenu()
+    widget_inner = list.itemWidget(list_item)
+    sellAction = menu.addAction("Sell")
+    buyAction = menu.addAction("Buy")
+    action = menu.exec_(widget_inner.mapToGlobal(click_position))
+    if action == sellAction:
+      self.new_sell_order({"asset": asset["name"], "quantity": 1, "unit_price": 1})
+    elif action == buyAction:
+      self.new_buy_order({"asset": asset["name"], "quantity": 1, "unit_price": 1})
+
+  def new_buy_order(self, prefill=None):
+    buy_dialog = NewOrderDialog("buy", self.swap_storage, prefill=prefill, parent=self)
     if(buy_dialog.exec_()):
       buy_swap = buy_dialog.build_order()
       if not buy_swap.destination:
@@ -82,8 +93,8 @@ class MainWindow(QMainWindow):
       details = OrderDetailsDialog(buy_swap, self.swap_storage, parent=self)
       details.exec_()
 
-  def new_sell_order(self):
-    sell_dialog = NewOrderDialog("sell", self.swap_storage, parent=self)
+  def new_sell_order(self, prefill=None):
+    sell_dialog = NewOrderDialog("sell", self.swap_storage, prefill=prefill, parent=self)
     if(sell_dialog.exec_()):
       sell_swap = sell_dialog.build_order()
       if not sell_swap.destination:
@@ -169,12 +180,12 @@ class MainWindow(QMainWindow):
     for idx in range(0, list.count()):
       row = list.item(idx)
       asset_details = list.itemWidget(row).getAsset()
-      existing_rows[asset_details["name"]] = self.add_update_list_widget(list, asset_details, QTwoLineRowWidget.from_asset, self.open_swap_menu, existing=row)
+      existing_rows[asset_details["name"]] = self.add_update_list_widget(list, asset_details, QTwoLineRowWidget.from_asset, self.open_asset_menu, existing=row)
     existing_assets = [*existing_rows.keys()]
     for asset in asset_list:
       seen_assets.append(asset["name"])
       if asset["name"] not in existing_assets:
-        self.add_update_list_widget(list, asset, QTwoLineRowWidget.from_asset, self.open_swap_menu)
+        self.add_update_list_widget(list, asset, QTwoLineRowWidget.from_asset, self.open_asset_menu)
     for old_name in [name for name in existing_assets if name not in seen_assets]:
       item_row = list.row(existing_rows[old_name])
       list.takeItem(item_row)
