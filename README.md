@@ -26,21 +26,51 @@ rpcuser=<user>
 rpcpassword=<password>
 ```
 
-# Features #
+# Features (Roughly in order) #
 
+- [x] Adding "Pro" to the name
 - [x] Create Buy Orders.
 - [x] Create Sell Orders.
 - [x] Complete Buy/Sell Orders.
 - [x] Asset List
 - [x] Soft-locking UTXO's (UTXO's setup on the buy/sell screen are locked to prevent use when setting up future UTXO's.)
-- [ ] Soft-Remove Trade Order (Hide, but remember so it can be displayed if executed.)
-- [ ] Hard-Remove Trade Order (Invalidate the previous UTXO by using it in a transaction to yourself.)
-- [ ] Asset<->Asset swaps
+- [x] Soft-Remove Trade Order (Hide, but remember so it can be displayed if executed.)
+- [x] Hard-Remove Trade Order (Invalidate the previous UTXO by using it in a transaction to yourself.)
+- [ ] Asset <-> Asset swaps
+- [ ] System notification on completed trade
+- [ ] Proxy asset signing/reissuing. (Party `A` owns admin asset, Party `B` requests a child asset be minted/reissued/etc under `A`'s admin asset.)
 - [ ] Proper asset decimal/metadata support.
 - [ ] Available UTXO dialog (with option to manually lock/unlock? UTXO's.)
-- [ ] Side-channel integration for publishing/discovering active orders.
-- [ ] Proxy asset signing/reissuing. (Party `A` owns admin asset, Party `B` requests a child asset be minted/reissued/etc under `A`'s admin asset.)
-- [x] Adding "Pro" to the name
+- [ ] Bulk buy/sell order creation. Would require making & locking many UTXO's individually.
+- [ ] Settings menu
+- [ ] -- Preferred rvn/asset destination address
+- [ ] -- Previous order history age (remove records after x days)
+- [ ] IPFS content preview
+
+## Side-Channel Support ##
+
+There is a companion repository [raven-trader-server](https://github.com/ben-abraham/raven-trader-server), a C# Asp.Net Core cross-platform web-server for indexing the chain for exectued swaps and providing that data via an API. This site will hopefully serve as a baseline implementation for an open standard of an api trading interface.
+
+### Client Features ###
+
+- [ ] Post orders to API
+- [ ] Purchase from API
+- [ ] Preview historical asset prices on buy/sell
+- [ ] Local automated purchase/sale at specific price (you are executing and therefore paying fees, but get guaranteed execution if there is an available order at a given price)
+- [ ] 
+
+### Server Features ###
+
+- [x] **Indexer**: Blocks, transaction count, asset volume, and swap history.
+- [ ] **Indexer**: Asset metadata, full tx history.
+- [ ] **Indexer**: Invalidate orders on execution
+- [ ] **Indexer**: Re-org detection and handling
+- [x] **API**: Validate & Store swaps
+- [x] **API**: Get swap history
+- [x] **API**: Get active listings
+- [x] **Web**: 24hr volume, recent swaps, add new swap
+- [ ] **Web**: Asset list & history, omnisearch, documentation/guide
+- [ ] **General**: Asset <-> Asset swap support
 
 # Process #
 
