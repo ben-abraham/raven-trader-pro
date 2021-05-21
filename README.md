@@ -57,7 +57,6 @@ There is a companion repository [raven-trader-server](https://github.com/ben-abr
 - [ ] Purchase from API
 - [ ] Preview historical asset prices on buy/sell
 - [ ] Local automated purchase/sale at specific price (you are executing and therefore paying fees, but get guaranteed execution if there is an available order at a given price)
-- [ ] 
 
 ### Server Features ###
 
