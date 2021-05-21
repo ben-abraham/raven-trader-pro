@@ -44,12 +44,25 @@ class MainWindow(QMainWindow):
     menu = QMenu()
     widget_inner = list.itemWidget(list_item)
     deatilsAction = menu.addAction("View Details")
-    removeSoftAction = menu.addAction("Remove Order - Soft")
-    removeHardAction = menu.addAction("Remove Order - Hard")
+    updateAction = menu.addAction("Update Price") if swap.state == "new" else None
+    removeSoftAction = menu.addAction("Remove Order - Soft") if swap.state == "new" else None
+    removeHardAction = menu.addAction("Remove Order - Hard") if swap.state == "new" else None
+    removeCompletedAction = menu.addAction("Remove Order") if swap.state == "completed" else None
     action = menu.exec_(widget_inner.mapToGlobal(click_position))
-    if action == deatilsAction:
+    if action == None:
+      return
+    elif action == deatilsAction:
       print("View Details")
       self.view_order_details(list_item)
+    elif action == updateAction:
+      (response, new_price) = self.update_order_details(list_item)
+      if response:
+        print("Updated Order - Old:{} RVN \t New:{} RVN".format(swap.unit_price, new_price))
+        swap.unit_price = new_price
+        swap.sign_partial()
+        self.swap_storage.save_swaps()
+        self.view_order_details(list_item)
+        self.update_lists()
     elif action == removeSoftAction:
       if(show_dialog("Soft Remove Trade Order?", 
       "Would you like to soft-remove this trade order?\r\n"+
@@ -57,7 +70,10 @@ class MainWindow(QMainWindow):
       "A soft-remove simply stops locking the UTXO and ignores it in software (anyone who recieved the order can still complete it).\r\n"+
       "A hard remove will invalidate the previously-used UTXO by sending yourself a transaction using it.")):
         print("Soft Removing Trade Order")
-        show_dialog("Sorry", "Not implemented yet :^)")
+        #TODO: Hide these instead of deleting. Needs to unlock UTXO as well
+        self.swap_storage.remove_swap(swap)
+        self.swap_storage.save_swaps()
+        self.update_lists()
     elif action == removeHardAction:
       if(show_dialog("Hard Remove Trade Order?", 
       "Would you like to hard-remove this trade order?\r\n"+
@@ -66,6 +82,11 @@ class MainWindow(QMainWindow):
       "A hard remove will invalidate the previously-used UTXO by sending yourself a transaction using it.")):
         print("Hard Remove Trade Order")
         show_dialog("Sorry", "Not implemented yet :^)")
+    elif action == removeCompletedAction:
+      print("Removing Order")
+      self.swap_storage.remove_swap(swap)
+      self.swap_storage.save_swaps()
+      self.update_lists()
 
   def open_asset_menu(self, list, list_item, click_position, asset):
     menu = QMenu()
@@ -90,7 +111,7 @@ class MainWindow(QMainWindow):
       self.swap_storage.add_swap(buy_swap)
       self.swap_storage.save_swaps()
       self.update_lists()
-      details = OrderDetailsDialog(buy_swap, self.swap_storage, parent=self)
+      details = OrderDetailsDialog(buy_swap, self.swap_storage, parent=self, mode="details")
       details.exec_()
 
   def new_sell_order(self, prefill=None):
@@ -105,11 +126,11 @@ class MainWindow(QMainWindow):
       self.swap_storage.add_swap(sell_swap)
       self.swap_storage.save_swaps()
       self.update_lists()
-      details = OrderDetailsDialog(sell_swap, self.swap_storage, parent=self)
+      details = OrderDetailsDialog(sell_swap, self.swap_storage, parent=self, dialog_mode="details")
       details.exec_()
 
   def complete_order(self):
-    order_dialog = OrderDetailsDialog(None, self.swap_storage, complete_mode=True, parent=self)
+    order_dialog = OrderDetailsDialog(None, self.swap_storage, parent=self, dialog_mode="complete")
     if(order_dialog.exec_()):
       partial_swap = order_dialog.build_order()
       finished_swap = partial_swap.complete_order(self.swap_storage)
@@ -133,8 +154,14 @@ class MainWindow(QMainWindow):
   def view_order_details(self, widget):
     list = widget.listWidget()
     swap_row = list.itemWidget(widget)
-    details = OrderDetailsDialog(swap_row.getSwap(), self.swap_storage, parent=self)
-    details.exec_()
+    details = OrderDetailsDialog(swap_row.getSwap(), self.swap_storage, parent=self, dialog_mode="details")
+    return details.exec_()
+
+  def update_order_details(self, widget):
+    list = widget.listWidget()
+    swap_row = list.itemWidget(widget)
+    details = OrderDetailsDialog(swap_row.getSwap(), self.swap_storage, parent=self, dialog_mode="update")
+    return (details.exec_(), details.spnUpdateUnitPrice.value())
     
   def clear_list(self, list):
     for row in range(0, list.count()):

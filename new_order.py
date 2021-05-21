@@ -49,7 +49,7 @@ class NewOrderDialog(QDialog):
     self.spinQuantity.valueChanged.connect(self.update)
     self.spinUnitPrice.valueChanged.connect(self.update)
     self.btnCreateUTXO.clicked.connect(self.create_utxo)
-    self.lblWhatUTXO.mousePressEvent = self.show_utxo_help #apparently this even is jenky?
+    self.lblWhatUTXO.mousePressEvent = self.show_utxo_help #apparently this event is jenky?
     self.update()
 
   def show_utxo_help(self, *args):

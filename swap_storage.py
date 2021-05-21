@@ -61,6 +61,11 @@ class SwapStorage:
     utxo_parts = swap.utxo.split("|")
     self.add_lock(utxo_parts[0], int(utxo_parts[1]))
 
+  def remove_swap(self, swap):
+    utxo_parts = swap.utxo.split("|")
+    self.remove_lock(utxo_parts[0], int(utxo_parts[1]))
+    self.swaps.remove(swap)
+
   def add_lock(self, txid, vout):
     for lock in self.locks:
       if txid == lock["txid"] and vout == lock["vout"]:
@@ -75,6 +80,11 @@ class SwapStorage:
         if txid == a_utxo["txid"] and vout == a_utxo["vout"]:
           self.locks.append({"txid": txid, "vout": vout, "type": "asset", "asset": asset, "amount": a_utxo["amount"]})
           return #Locking assets
+
+  def remove_lock(self, txid, vout):
+    for lock in self.locks:
+      if txid == lock["txid"] and vout == lock["vout"]:
+        self.locks.remove(lock)
 
   def refresh_locks(self):
     for swap in self.swaps:
