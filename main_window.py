@@ -81,7 +81,20 @@ class MainWindow(QMainWindow):
       "A soft-remove simply stops locking the UTXO and ignores it in software (anyone who recieved the order can still complete it).\r\n"+
       "A hard remove will invalidate the previously-used UTXO by sending yourself a transaction using it.")):
         print("Hard Remove Trade Order")
-        show_dialog("Sorry", "Not implemented yet :^)")
+          
+        setup_utxo = swap.consutrct_invalidate_tx(self.swap_storage)
+        preview_dialog = PreviewTransactionDialog(swap, setup_utxo["hex"], self.swap_storage, parent=self)
+        if preview_dialog.exec_():
+          print("Send Invalidate!")
+          sent_txid = do_rpc("sendrawtransaction", hexstring=setup_utxo["hex"])
+          update_response = show_prompt("Update Price?", "Sent! TXID: {}".format(sent_txid), "Would you like to create a new order against the invalidated UTXO?", parent=self)
+          if update_response == QMessageBox.Yes:
+            if swap.type == "buy":
+              self.new_buy_order({"asset": swap.asset, "quantity": swap.quantity, "unit_price": swap.unit_price, "waiting": sent_txid})
+            elif swap.type == "sell":
+              self.new_sell_order({"asset": swap.asset, "quantity": swap.quantity, "unit_price": swap.unit_price, "waiting": sent_txid})
+        else:
+          print("Dont Invalidate!")
     elif action == removeCompletedAction:
       print("Removing Order")
       self.swap_storage.remove_swap(swap)
@@ -111,7 +124,7 @@ class MainWindow(QMainWindow):
       self.swap_storage.add_swap(buy_swap)
       self.swap_storage.save_swaps()
       self.update_lists()
-      details = OrderDetailsDialog(buy_swap, self.swap_storage, parent=self, mode="details")
+      details = OrderDetailsDialog(buy_swap, self.swap_storage, parent=self, dialog_mode="details")
       details.exec_()
 
   def new_sell_order(self, prefill=None):
@@ -149,7 +162,6 @@ class MainWindow(QMainWindow):
         self.update_lists()
       else:
         print("Transaction Rejected")
-
 
   def view_order_details(self, widget):
     list = widget.listWidget()

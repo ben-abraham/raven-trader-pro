@@ -25,6 +25,7 @@ class NewOrderDialog(QDialog):
     self.swap_storage.load_utxos()
     self.waiting_txid = None
     self.asset_exists = True
+    self.all_utxo = False #allow perfectly rounded UTXO's only when waiting from the start
 
     if self.mode == "buy":
       self.setWindowTitle("New Buy Order")
@@ -34,7 +35,7 @@ class NewOrderDialog(QDialog):
       self.cmbAssets.currentTextChanged.connect(self.asset_changed)
       self.cmbAssets.addItems(self.swap_storage.my_asset_names)
       self.cmbAssets.setCurrentText("")
-    else:
+    elif self.mode == "sell":
       self.setWindowTitle("New Sell Order")
       self.cmbAssets.setEditable(False)
       self.cmbAssets.addItems(["{} [{}]".format(v, self.swap_storage.assets[v]["balance"]) for v in self.swap_storage.my_asset_names])
@@ -44,6 +45,12 @@ class NewOrderDialog(QDialog):
       self.cmbAssets.setCurrentText(prefill["asset"])
       self.spinQuantity.setValue(prefill["quantity"])
       self.spinUnitPrice.setValue(prefill["unit_price"])
+      self.asset_exists = True
+      if "waiting" in prefill:
+        self.waiting_txid = prefill["waiting"]
+        self.all_utxo = True
+        self.start_waiting()
+        self.wait_timer()
 
     self.cmbAssets.currentIndexChanged.connect(self.update)
     self.spinQuantity.valueChanged.connect(self.update)
@@ -135,7 +142,7 @@ class NewOrderDialog(QDialog):
 
   def wait_timer(self):
     tx_status = do_rpc("getrawtransaction", txid=self.waiting_txid, verbose=True)
-    confirmed = tx_status["confirmations"] > 1 if "confirmations" in tx_status else False
+    confirmed = tx_status["confirmations"] >= 1 if "confirmations" in tx_status else False
     if confirmed:
       print("UTXO Setup Confirmed!")
       self.waiting_txid = None
@@ -159,14 +166,14 @@ class NewOrderDialog(QDialog):
     self.valid_order = True
     if self.mode == "buy":
       self.asset_name = self.cmbAssets.currentText()
-      self.order_utxo = self.swap_storage.find_utxo("rvn", self.total_price, skip_locks=True)
+      self.order_utxo = self.swap_storage.find_utxo("rvn", self.total_price, skip_locks=True, skip_rounded=False)
       self.chkUTXOReady.setText("UTXO Ready ({:.8g} RVN)".format(self.total_price))
       #don't have enough rvn for the order
       if self.total_price > self.swap_storage.balance:
         self.valid_order = False
     else:
       self.asset_name = self.swap_storage.my_asset_names[self.cmbAssets.currentIndex()]
-      self.order_utxo = self.swap_storage.find_utxo("asset", self.quantity, name=self.asset_name, skip_locks=True)
+      self.order_utxo = self.swap_storage.find_utxo("asset", self.quantity, name=self.asset_name, skip_locks=True, skip_rounded=False)
       self.chkUTXOReady.setText("UTXO Ready ({:.8g}x [{}])".format(self.quantity, self.asset_name))
       #Don't own the asset or enough of it
       if self.asset_name not in self.swap_storage.my_asset_names or self.quantity > self.swap_storage.assets[self.asset_name]["balance"]:

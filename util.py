@@ -17,29 +17,26 @@ from config import *
 def make_transfer(name, quantity):
   return {"transfer":{name:quantity}}
 
-def show_error(title, message, message_extra="", parent=None):
+def show_dialog_inner(title, message, buttons, icon=QMessageBox.Information, message_extra="", parent=None):
   msg = QMessageBox(parent)
-  msg.setIcon(QMessageBox.Critical)
+  msg.setIcon(icon)
 
   msg.setText(message)
   if(message_extra):
     msg.setInformativeText(message_extra)
   msg.setWindowTitle(title)
-  msg.setStandardButtons(QMessageBox.Ok)
+  msg.setStandardButtons(buttons)
 	
   return msg.exec_()
+
+def show_error(title, message, message_extra="", parent=None):
+  return show_dialog_inner(title, message, QMessageBox.Ok | QMessageBox.Cancel, QMessageBox.Error, message_extra=message_extra, parent=parent)
 
 def show_dialog(title, message, message_extra="", parent=None):
-  msg = QMessageBox(parent)
-  msg.setIcon(QMessageBox.Information)
+  return show_dialog_inner(title, message, QMessageBox.Ok | QMessageBox.Cancel, QMessageBox.Information, message_extra=message_extra, parent=parent)
 
-  msg.setText(message)
-  if(message_extra):
-    msg.setInformativeText(message_extra)
-  msg.setWindowTitle(title)
-  msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
-	
-  return msg.exec_()
+def show_prompt(title, message, message_extra="", parent=None):
+  return show_dialog_inner(title, message, QMessageBox.Yes | QMessageBox.No, QMessageBox.Information, message_extra=message_extra, parent=parent)
 
 #
 #Helper Classes

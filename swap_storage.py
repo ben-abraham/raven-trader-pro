@@ -148,7 +148,12 @@ class SwapStorage:
       #Try to combine as many UTXO's as possible into a single Transaction
       #This raises your transaction fees slighty (more data) but is ultimately a good thing for the network
       #Don't need to do anything actualy b/c default behavior is to go smallest-to-largest
-      found_set = None #noop
+      #However, if we have a single, unrounded UTXO that is big enough. it's always more efficient to use that instead
+      quick_check = self.find_utxo(type, quantity, name=name, skip_locks=skip_locks, exact=False, sort_utxo=True)
+      if quick_check:
+        #If we have a single UTXO big enough, just use it and get change. sort_utxo ensures we find the smallest first
+        found_set = [quick_check]
+        total = quick_check["amount"]
     elif mode == "minimize":
       #Minimize the number of UTXO's used, to reduce transaction fees
       #This minimizes transaction fees but
@@ -187,15 +192,7 @@ class SwapStorage:
   #check if a swap's utxo is still unspent
   #if not then the swap has been executed!
   def swap_utxo_unspent(self, utxo):
-    utxo_parts = utxo.split("|")
-    for utxo in self.utxos:
-      if utxo["txid"] == utxo_parts[0] and utxo["vout"] == int(utxo_parts[1]):
-        return True
-    for asset_name in self.my_asset_names:
-      for a_utxo in self.assets[asset_name]["outpoints"]:
-        if a_utxo["txid"] == utxo_parts[0] and a_utxo["vout"] == int(utxo_parts[1]):
-          return True
-    return False
+    return self.search_utxo(utxo) != None
 
   def wallet_lock_all_swaps(self):
     #first unlock everything
@@ -208,7 +205,18 @@ class SwapStorage:
         locked_utxos.append({"txid":utxo_parts[0],"vout":int(utxo_parts[1])})
     print("Locking {} UTXO's for buy orders".format(len(locked_utxos)))
     do_rpc("lockunspent", unlock=False, transactions=locked_utxos)
-  
+
+  def search_utxo(self, utxo):
+    utxo_parts = utxo.split("|")
+    for utxo in self.utxos:
+      if utxo["txid"] == utxo_parts[0] and utxo["vout"] == int(utxo_parts[1]):
+        return {"type": "rvn", "utxo": utxo}
+    for asset_name in self.my_asset_names:
+      for a_utxo in self.assets[asset_name]["outpoints"]:
+        if a_utxo["txid"] == utxo_parts[0] and a_utxo["vout"] == int(utxo_parts[1]):
+          return {"type": "asset", "utxo": a_utxo, "name": asset_name}
+    return None
+
   def wallet_lock_single(self, swap):
     utxo_parts = swap.utxo.split("|")
     lock_utxo = [{"txid":utxo_parts[0],"vout":int(utxo_parts[1])}]

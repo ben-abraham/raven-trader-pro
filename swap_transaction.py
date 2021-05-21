@@ -39,6 +39,25 @@ class SwapTransaction():
     self.raw = signed_raw["hex"]
     return self.raw
 
+  def consutrct_invalidate_tx(self, swap_storage, new_destination=None):
+    self_utxo = swap_storage.search_utxo(self.utxo)
+    print(self_utxo)
+    lock_vin = [{"txid":self_utxo["utxo"]["txid"],"vout":self_utxo["utxo"]["vout"]}]
+    lock_vout = None
+    out_addr = new_destination if new_destination else self.destination
+
+    #Make sure to use local properties here in case we updated before invalidating (changed order size/amount)
+    if self_utxo["type"] == "rvn":
+      lock_vout = { out_addr: self.totalPrice() }
+    elif self_utxo["type"] == "asset": #Sell order means we need to invalide asset utxo
+      lock_vout = { out_addr: make_transfer(self_utxo["name"], self.quantity) }
+
+    new_tx = do_rpc("createrawtransaction", inputs=lock_vin, outputs=lock_vout)
+    funded_tx = do_rpc("fundrawtransaction", hexstring=new_tx, options={"changePosition": 1})
+    signed_raw = do_rpc("signrawtransaction", hexstring=funded_tx["hex"])
+
+    return signed_raw
+
   #This is run by Bob when he wants to complete an order
   def complete_order(self, swap_storage):
     final_vin = [{"txid":self.decoded["vin"]["txid"], "vout":self.decoded["vin"]["vout"], "sequence":self.decoded["vin"]["sequence"]}]
