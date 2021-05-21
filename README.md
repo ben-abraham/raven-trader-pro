@@ -1,6 +1,12 @@
-# Raven Trader Pro
+# Raven Trader Pro (EXTREMELY ALPHA!) #
 
 The first and (currently) only integrated application for creating asset buy and sell orders for the ravencoin network via raw transactions. These transactions are signed using `SIGHASH_SINGLE|SIGHASH_ANYONECANPAY` which allows for on-chain swaps to take place with only 2 steps of user interaction, one for each party, and **only a single transaction published to the chain**. The order is fully inspectable at all steps along the way, leading to maximum transparency, while ensuring fast efficient orders can take place.
+
+**Disclaimer: This software is in still in early development, and potentially involves financial transactions, please havily review all transactions to watch for any potential errors**
+
+# Screenshot #
+
+![image](https://user-images.githubusercontent.com/793454/118441262-f1163680-b6b6-11eb-9a3e-7181b4eebca2.png)
 
 Setup:
 - Install Python 3.7 & PIP
@@ -25,6 +31,7 @@ rpcpassword=<password>
 - [x] Create Buy Orders.
 - [x] Create Sell Orders.
 - [x] Complete Buy/Sell Orders.
+- [x] Asset List
 - [x] Soft-locking UTXO's (UTXO's setup on the buy/sell screen are locked to prevent use when setting up future UTXO's.)
 - [ ] Soft-Remove Trade Order (Hide, but remember so it can be displayed if executed.)
 - [ ] Hard-Remove Trade Order (Invalidate the previous UTXO by using it in a transaction to yourself.)
