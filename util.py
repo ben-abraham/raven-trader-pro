@@ -30,7 +30,7 @@ def show_dialog_inner(title, message, buttons, icon=QMessageBox.Information, mes
   return msg.exec_()
 
 def show_error(title, message, message_extra="", parent=None):
-  return show_dialog_inner(title, message, QMessageBox.Ok | QMessageBox.Cancel, QMessageBox.Error, message_extra=message_extra, parent=parent)
+  return show_dialog_inner(title, message, QMessageBox.Ok | QMessageBox.Cancel, QMessageBox.Critical, message_extra=message_extra, parent=parent)
 
 def show_dialog(title, message, message_extra="", parent=None):
   return show_dialog_inner(title, message, QMessageBox.Ok | QMessageBox.Cancel, QMessageBox.Information, message_extra=message_extra, parent=parent)
