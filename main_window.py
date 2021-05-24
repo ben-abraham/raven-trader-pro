@@ -147,21 +147,22 @@ class MainWindow(QMainWindow):
     if(order_dialog.exec_()):
       partial_swap = order_dialog.build_order()
       finished_swap = partial_swap.complete_order(self.swap_storage)
-      print("Swap: ", json.dumps(partial_swap.__dict__))
-      
-      preview_dialog = PreviewTransactionDialog(partial_swap, finished_swap, self.swap_storage, parent=self)
+      if finished_swap:
+        print("Swap: ", json.dumps(partial_swap.__dict__))
+        
+        preview_dialog = PreviewTransactionDialog(partial_swap, finished_swap, self.swap_storage, parent=self)
 
-      if(preview_dialog.exec_()):
-        print("Transaction Approved. Sending!")
-        submitted_txid = do_rpc("sendrawtransaction", hexstring=finished_swap)
-        partial_swap.txid = submitted_txid
-        partial_swap.state = "completed" #TODO: Add waiting on confirmation phase
-        #Add a completed swap to the list.
-        #it's internally tracked from an external source
-        self.swap_storage.add_swap(partial_swap)
-        self.update_lists()
-      else:
-        print("Transaction Rejected")
+        if(preview_dialog.exec_()):
+          print("Transaction Approved. Sending!")
+          submitted_txid = do_rpc("sendrawtransaction", hexstring=finished_swap)
+          partial_swap.txid = submitted_txid
+          partial_swap.state = "completed" #TODO: Add waiting on confirmation phase
+          #Add a completed swap to the list.
+          #it's internally tracked from an external source
+          self.swap_storage.add_swap(partial_swap)
+          self.update_lists()
+        else:
+          print("Transaction Rejected")
 
   def view_order_details(self, widget):
     list = widget.listWidget()

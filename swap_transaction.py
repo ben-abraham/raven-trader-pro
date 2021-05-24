@@ -81,28 +81,34 @@ class SwapTransaction():
       final_vout[target_addr] = make_transfer(self.asset, self.quantity)
 
       quick_fee = 2 * (0.01 * len(self.raw) / 2/ 1024) #Double the cost of the 1vin:1vout should be good enough to find a utxo set
+      final_estimate = self.totalPrice() + quick_fee #Rough estimate of the total tx cost (purchase price + fees)
+
       change_addr = do_rpc("getnewaddress")
       print("Change is being sent to {}".format(change_addr))
-      final_vout[change_addr] = round(quick_fee, 8)
 
-      utxo_set = swap_storage.find_utxo_set("rvn", self.totalPrice() + quick_fee)
+      #This is just used as a placeholder to-be-updated with real fee later
+      final_vout[change_addr] = round(quick_fee, 8) 
+
+      #Determine a valid UTXO set that completes this transaction
+      (utxo_total, utxo_set) = swap_storage.find_utxo_set("rvn", final_estimate)
+      if utxo_set is None:
+        show_error("Not enough UTXOs", "Unable to find a valid UTXO set for {} RVN".format(final_estimate))
+        return None
+
       for utxo in utxo_set:
         final_vin.append({"txid":utxo["txid"],"vout":utxo["vout"]})
 
       #Build final combined raw transaction
       final_raw = do_rpc("createrawtransaction", inputs=final_vin, outputs=final_vout)
 
-      #Fund the transaction, this will cover both the purchase debit and any fees
-#      funded_tx = do_rpc("fundrawtransaction", hexstring=final_raw, options={'changePosition':1})
-
-      funded_dec = do_rpc("decoderawtransaction", hexstring=final_raw)#funded_tx["hex"])
+      funded_dec = do_rpc("decoderawtransaction", hexstring=final_raw)
       funded_vin, funded_vout = dup_transaction(funded_dec)
       vout_keys = [*funded_vout.keys()]
 
       estimated_fee = 0.01 * len(final_raw) / 2 / 1024 #2 hex chars = 1 byte
 
-      calculated_change = funded_vout[change_addr]
-      fee_test = calculated_change - estimated_fee
+      calculated_change = utxo_total - self.totalPrice() #This is how much change we should expect to recieve best-case (no fees)
+      fee_test = calculated_change - estimated_fee #Subtract fees from it
 
       print("Funded TX")
       print(final_raw)

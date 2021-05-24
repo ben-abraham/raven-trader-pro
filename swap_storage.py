@@ -182,12 +182,12 @@ class SwapStorage:
       print("Num UTXO: {}".format(len(found_set)))
       print("Total: {}".format(total))
       print("Change: {}".format(total - quantity))
-      return found_set
+      return (total, found_set)
     else:
       print("Not enough funds found")
       print("Total: {}".format(total))
       print("Missing: {}".format(total - quantity))
-      return None
+      return (None, None)
 
   #check if a swap's utxo is still unspent
   #if not then the swap has been executed!
