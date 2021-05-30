@@ -7,15 +7,80 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import sys, getopt, argparse, json, time, getpass, os.path
+import sys, getopt, argparse, json, time, getpass, os.path, datetime, shutil
 from config import *
+
+#
+#Chain helper functions
+#
+
+#2 hex chars = 1 byte, 0.01 RVN/kb feerate
+def calculate_fee(transaction_hex):
+  num_kb = len(transaction_hex) / 2 / 1024
+  fee = 0.0125 * num_kb
+  #print("{} bytes => {} RVN".format(num_kb * 1024, fee))
+  return fee
+
+def fund_asset_transaction_raw(swap_storage, fn_rpc, asset_name, quantity, vins, vouts):
+  #Search for enough asset UTXOs
+  (asset_utxo_total, asset_utxo_set) = swap_storage.find_utxo_set("asset", quantity, name=asset_name, skip_locks=True)
+  #Add our asset input(s)
+  for asset_utxo in asset_utxo_set:
+    vins.append({"txid":asset_utxo["txid"], "vout":asset_utxo["vout"]})
+
+  #Add asset change if needed
+  if(asset_utxo_total > quantity):
+    #TODO: Send change to address the asset UTXO was originally sent to
+    asset_change_addr = fn_rpc("getnewaddress") #cheat to get rpc in this scope
+    print("Asset change being sent to {}".format(asset_change_addr))
+    vouts[asset_change_addr] = make_transfer(asset_name, asset_utxo_total - quantity)
+
+def fund_transaction_final(swap_storage, fn_rpc, send_rvn, recv_rvn, target_addr, vins, vouts, original_tx):
+  cost = send_rvn #Cost represents rvn sent to the counterparty, since we adjust send_rvn later
+  
+  #If this is a swap, we need to add pseduo-funds for fee calc
+  if recv_rvn == 0 and send_rvn == 0:
+    #Add dummy output for fee calc
+    vouts[target_addr] = round(calculate_fee(original_tx) * 4, 8)
+    #Test sizing for fees, overkill to actually sign but :shrug:
+    sizing_raw = fn_rpc("createrawtransaction", inputs=vins, outputs=vouts)
+    send_rvn = calculate_fee(sizing_raw) * 4 #Quadruple fee should be enough to estimate actual fee
+    
+  if recv_rvn > 0 and send_rvn == 0:
+    #If we are not supplying rvn, but expecting it, we need to subtract fees from that only
+    #So add our output at full value first
+    vouts[target_addr] = recv_rvn
+
+  print("Funding Raw Transaction. Send: {:.8g} RVN. Get: {:.8g} RVN".format(send_rvn, recv_rvn))
+  
+  if send_rvn > 0:
+    #Determine a valid UTXO set that completes this transaction
+    (utxo_total, utxo_set) = swap_storage.find_utxo_set("rvn", send_rvn)
+    if utxo_set is None:
+      show_error("Not enough UTXOs", "Unable to find a valid UTXO set for {:.8g} RVN".format(send_rvn))
+      return False
+    send_rvn = utxo_total #Update for the amount we actually supplied
+    for utxo in utxo_set:
+      vins.append({"txid":utxo["txid"],"vout":utxo["vout"]})
+
+  #Then build and sign raw to estimate fees
+  sizing_raw = fn_rpc("createrawtransaction", inputs=vins, outputs=vouts)
+  sizing_raw = fn_rpc("combinerawtransaction", txs=[sizing_raw, original_tx])
+  sizing_signed = fn_rpc("signrawtransaction", hexstring=sizing_raw) #Need to calculate fees against signed message
+  fee_rvn = calculate_fee(sizing_signed["hex"])
+  out_rvn = round((send_rvn + recv_rvn) - cost - fee_rvn, 8)
+  vouts[target_addr] = out_rvn
+
+  print("Funding result: Send: {:.8g} Recv: {:.8g} Fee: {:.8g} Change: {:.8g}".format(send_rvn, recv_rvn, fee_rvn, out_rvn))
+
+  return True
 
 #
 #Helper function
 #
 
 def make_transfer(name, quantity):
-  return {"transfer":{name:quantity}}
+  return {"transfer":{name:round(float(quantity), 8)}}
 
 def show_dialog_inner(title, message, buttons, icon=QMessageBox.Information, message_extra="", parent=None):
   msg = QMessageBox(parent)
@@ -37,6 +102,11 @@ def show_dialog(title, message, message_extra="", parent=None):
 
 def show_prompt(title, message, message_extra="", parent=None):
   return show_dialog_inner(title, message, QMessageBox.Yes | QMessageBox.No, QMessageBox.Information, message_extra=message_extra, parent=parent)
+
+def backup_remove_file(file_path):
+  (root, ext) = os.path.splitext(file_path)
+  new_name = "old_{}_{}.{}".format(file_path, datetime.datetime.now().strftime('%Y%m%d%H%M%S'), ext) 
+  print("Discarding/moving file [{}] into backup location [{}]".format(file_path, new_name))
 
 #
 #Helper Classes
@@ -70,10 +140,13 @@ class QTwoLineRowWidget (QWidget):
     row.swap = swap
     if swap.type == "buy":
       row.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
-        "Buy" if swap.own else "Sold", swap.quantity, swap.asset, swap.totalPrice(), swap.unit_price))
-    else:
+        "Buy" if swap.own else "Sold", swap.quantity(), swap.asset(), swap.total_price(), swap.unit_price()))
+    elif swap.type == "sell":
       row.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
-        "Sell" if swap.own else "Bought", swap.quantity, swap.asset, swap.totalPrice(), swap.unit_price))
+        "Sell" if swap.own else "Bought", swap.quantity(), swap.asset(), swap.total_price(), swap.unit_price()))
+    elif swap.type == "trade":
+      row.setTextUp("{} {:.8g}x [{}] for {:.8g} [{}] ({:.8g}x [{}] each)".format(
+        "Trade" if swap.own else "Exchanged", swap.total_price(), swap.in_type, swap.quantity(), swap.asset(), swap.unit_price(), swap.in_type))
     if swap.state == "completed":
       if not swap.own:
         row.setTextDown("Completed: {}".format(swap.txid))
@@ -92,9 +165,9 @@ class QTwoLineRowWidget (QWidget):
     spk = vout["scriptPubKey"]
 
     if(spk["type"] == "transfer_asset"):
-      row.setTextUp("{}x [{}]".format(spk["asset"]["amount"],spk["asset"]["name"]))
+      row.setTextUp("{:.8g}x [{}]".format(float(spk["asset"]["amount"]),spk["asset"]["name"]))
     else:
-      row.setTextUp("{} RVN".format(row.vout["value"]))
+      row.setTextUp("{:.8g} RVN".format(float(row.vout["value"])))
     
     if(ismine):
       row.setTextDown("** {}".format(spk["addresses"][0]))
@@ -108,7 +181,7 @@ class QTwoLineRowWidget (QWidget):
     row = QTwoLineRowWidget()
     row.asset_data = asset_data
 
-    row.setTextUp("[{}] {}".format(asset_data["name"], asset_data["balance"]))
+    row.setTextUp("[{}] {:.8g}".format(asset_data["name"], asset_data["balance"]))
 
     return row
 

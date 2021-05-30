@@ -14,36 +14,31 @@
    <string>Dialog</string>
   </property>
   <layout class="QFormLayout" name="formLayout">
+   
    <item row="1" column="0">
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>Asset</string>
+      <string>Your Asset</string>
      </property>
     </widget>
    </item>
    <item row="1" column="1">
-    <widget class="QComboBox" name="cmbAssets">
+    <widget class="QComboBox" name="cmbOwnAsset">
      <property name="editable">
       <bool>true</bool>
      </property>
     </widget>
    </item>
-   <item row="2" column="1">
-    <widget class="QPushButton" name="btnCheckAvailable">
-     <property name="text">
-      <string>Check Available</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="0">
+
+   <item row="2" column="0">
     <widget class="QLabel" name="label_2">
      <property name="text">
       <string>Quantity</string>
      </property>
     </widget>
    </item>
-   <item row="3" column="1">
-    <widget class="QDoubleSpinBox" name="spinQuantity">
+   <item row="2" column="1">
+    <widget class="QDoubleSpinBox" name="spinOwnQuantity">
      <property name="decimals">
       <number>8</number>
      </property>
@@ -55,44 +50,8 @@
      </property>
     </widget>
    </item>
-   <item row="4" column="0">
-    <widget class="QLabel" name="label_3">
-     <property name="text">
-      <string>Price</string>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="1">
-    <widget class="QDoubleSpinBox" name="spinUnitPrice">
-     <property name="suffix">
-      <string> RVN</string>
-     </property>
-     <property name="decimals">
-      <number>8</number>
-     </property>
-     <property name="value">
-      <number>1</number>
-     </property>
-     <property name="minimum">
-      <double>0.00000000</double>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="0">
-    <widget class="QLabel" name="label_4">
-     <property name="text">
-      <string>Total Price</string>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="1">
-    <widget class="QLabel" name="lblTotalDisplay">
-     <property name="text">
-      <string>##.# RVN</string>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="0">
+
+   <item row="3" column="0">
     <widget class="QLabel" name="lblWhatUTXO">
      <property name="cursor">
       <cursorShape>WhatsThisCursor</cursorShape>
@@ -102,7 +61,7 @@
      </property>
     </widget>
    </item>
-   <item row="6" column="1">
+   <item row="3" column="1">
     <widget class="QCheckBox" name="chkUTXOReady">
      <property name="enabled">
       <bool>false</bool>
@@ -112,21 +71,82 @@
      </property>
     </widget>
    </item>
-   <item row="7" column="1">
+
+   <item row="4" column="1">
     <widget class="QPushButton" name="btnCreateUTXO">
      <property name="text">
       <string>Create Order UTXO</string>
      </property>
     </widget>
    </item>
+   
+   <item row="5" column="0">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Desired Asset</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QComboBox" name="cmbWantAsset">
+     <property name="editable">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   
+   <item row="6" column="1">
+    <widget class="QPushButton" name="btnCheckAvailable">
+     <property name="text">
+      <string>Check Available</string>
+     </property>
+    </widget>
+   </item>
+   
+   <item row="7" column="0">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Quantity</string>
+     </property>
+    </widget>
+   </item>
+   <item row="7" column="1">
+    <widget class="QDoubleSpinBox" name="spinWantQuantity">
+     <property name="decimals">
+      <number>8</number>
+     </property>
+     <property name="value">
+      <number>1</number>
+     </property>
+     <property name="minimum">
+      <double>0.00000001</double>
+     </property>
+    </widget>
+   </item>
+   
    <item row="8" column="0">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Final</string>
+     </property>
+    </widget>
+   </item>
+   <item row="8" column="1">
+    <widget class="QLabel" name="lblFinal">
+     <property name="text">
+      <string></string>
+     </property>
+    </widget>
+   </item>
+
+   <item row="9" column="0">
     <widget class="QLabel" name="label_5">
      <property name="text">
       <string>Destination</string>
      </property>
     </widget>
    </item>
-   <item row="8" column="1">
+   <item row="9" column="1">
     <widget class="QLineEdit" name="txtDestination">
      <property name="text">
       <string/>
@@ -136,7 +156,8 @@
      </property>
     </widget>
    </item>
-   <item row="9" column="1">
+
+   <item row="10" column="1">
     <widget class="QDialogButtonBox" name="btnDialogButtons">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>

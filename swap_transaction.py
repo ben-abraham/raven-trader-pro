@@ -17,15 +17,60 @@ class SwapTransaction():
     self.decoded = decoded
     vars(self).update(dict)
 
-  def totalPrice(self):
-    return self.quantity * self.unit_price
+  def total_price(self):
+    #Don't need to multiply 
+    if self.type == "buy":
+      return float(self.in_quantity)
+    elif self.type == "sell":
+      return float(self.out_quantity)
+    elif self.type == "trade":
+      return float(self.in_quantity) #In the case of a trade, consider the quantity of our asset, to be the "price"
+    else:
+      return 0
+
+  def quantity(self):
+    if self.type == "buy":
+      return float(self.out_quantity)
+    elif self.type == "sell":
+      return float(self.in_quantity)
+    elif self.type == "trade":
+      return float(self.out_quantity) #In the case of a trade, consider the desired asset to be the quantity
+    else:
+      return 0
+
+  def unit_price(self):
+    qty = self.quantity()
+    return (0 if qty == 0 else self.total_price() / qty)
+
+  def set_unit_price(self, new_price):
+    qty = self.quantity()
+    if self.type == "buy":
+      self.in_quantity = new_price * qty
+    elif self.type == "sell":
+      self.out_quantity = new_price * qty
+    elif self.type == "trade":
+      self.in_quantity = new_price * qty
+
+  def asset(self):
+    if self.type == "buy":
+      return self.out_type
+    elif self.type == "sell":
+      return self.in_type
+    elif self.type == "trade":
+      return self.out_type #In the case of a trade, consider the desired asset to be the "asset" of the trade
+    else:
+      return "N/A"
 
   #This is run by Alice when she wants to create an order
   def sign_partial(self):
     utxo_parts = self.utxo.split("|")
     vin = {"txid":utxo_parts[0], "vout":int(utxo_parts[1]), "sequence":0}
-    vout = {self.destination: make_transfer(self.asset, self.quantity)} if self.type == "buy"\
-      else {self.destination: self.totalPrice()}
+    if self.type == "buy":
+      vout = {self.destination: make_transfer(self.out_type, self.out_quantity)}
+    elif self.type == "sell":
+      vout = {self.destination: self.total_price()}
+    elif self.type == "trade":
+      vout = {self.destination: make_transfer(self.out_type, self.out_quantity)}
 
     check_unlock()
 
@@ -48,9 +93,9 @@ class SwapTransaction():
 
     #Make sure to use local properties here in case we updated before invalidating (changed order size/amount)
     if self_utxo["type"] == "rvn":
-      lock_vout = { out_addr: self.totalPrice() }
+      lock_vout = { out_addr: self.total_price() }
     elif self_utxo["type"] == "asset": #Sell order means we need to invalide asset utxo
-      lock_vout = { out_addr: make_transfer(self_utxo["name"], self.quantity) }
+      lock_vout = { out_addr: make_transfer(self_utxo["name"], self.in_quantity) }
 
     new_tx = do_rpc("createrawtransaction", inputs=lock_vin, outputs=lock_vout)
     funded_tx = do_rpc("fundrawtransaction", hexstring=new_tx, options={"changePosition": 1})
@@ -66,148 +111,97 @@ class SwapTransaction():
     tx_allowed = False
     tx_final = None
 
-    #Check for unlock here and for extended duration because the fee checks are jenky and can take time
-    check_unlock(240)
+    send_rvn = 0
+    recv_rvn = 0
 
+    #Create our destination for assets
+    #NOTE: self.destination is where our raven is going, not our destination for assets
+    #hence the call to getnewaddress. Should support explicitly setting from the user
+    target_addr = do_rpc("getnewaddress")
+    print("Output is being sent to {}".format(target_addr))
+
+
+    #Unlock for signing during fee calc + sending
+    check_unlock(10)
+
+    ##
+    ##  Complete sell Orders (we are buying an asset with rvn)
+    ##
     if self.type == "sell":
-      #Sale order means WE are purchasing
-      print("You are purchasing {} x [{}] for {} RVN".format(self.quantity, self.asset, self.totalPrice()))
+      print("You are purchasing {} x [{}] for {} RVN".format(self.in_quantity, self.asset(), self.total_price()))
 
-      #Add our destination for assets
-      #NOTE: self.destination is where our raven is going, not our destination for assets
-      #hence the call to getnewaddress. Should support explicitly setting from the user
-      target_addr = do_rpc("getnewaddress")
-      print("Assets are being sent to {}".format(target_addr))
-      final_vout[target_addr] = make_transfer(self.asset, self.quantity)
+      #Send output assets to target_addr
+      final_vout[target_addr] = make_transfer(self.asset(), self.quantity())
+      #This much rvn must be supplied at the end
+      send_rvn = self.total_price()
 
-      quick_fee = 2 * (0.01 * len(self.raw) / 2/ 1024) #Double the cost of the 1vin:1vout should be good enough to find a utxo set
-      final_estimate = self.totalPrice() + quick_fee #Rough estimate of the total tx cost (purchase price + fees)
-
-      change_addr = do_rpc("getnewaddress")
-      print("Change is being sent to {}".format(change_addr))
-
-      #This is just used as a placeholder to-be-updated with real fee later
-      final_vout[change_addr] = round(quick_fee, 8) 
-
-      #Determine a valid UTXO set that completes this transaction
-      (utxo_total, utxo_set) = swap_storage.find_utxo_set("rvn", final_estimate)
-      if utxo_set is None:
-        show_error("Not enough UTXOs", "Unable to find a valid UTXO set for {} RVN".format(final_estimate))
-        return None
-
-      for utxo in utxo_set:
-        final_vin.append({"txid":utxo["txid"],"vout":utxo["vout"]})
-
-      #Build final combined raw transaction
-      final_raw = do_rpc("createrawtransaction", inputs=final_vin, outputs=final_vout)
-
-      funded_dec = do_rpc("decoderawtransaction", hexstring=final_raw)
-      funded_vin, funded_vout = dup_transaction(funded_dec)
-      vout_keys = [*funded_vout.keys()]
-
-      estimated_fee = 0.01 * len(final_raw) / 2 / 1024 #2 hex chars = 1 byte
-
-      calculated_change = utxo_total - self.totalPrice() #This is how much change we should expect to recieve best-case (no fees)
-      fee_test = calculated_change - estimated_fee #Subtract fees from it
-
-      print("Funded TX")
-      print(final_raw)
-
-      #Jenky AF, no great way to estimate raw fee from rpc, so lower and test in mempool until good
-      while fee_test > 0:
-        funded_vout[change_addr] = round(fee_test, 8)
-
-        dup_funded = do_rpc("createrawtransaction", inputs=funded_vin, outputs=funded_vout)
-
-        #Merge the signed tx from the original order
-        combined_raw = do_rpc("combinerawtransaction", txs=[dup_funded, self.raw])
-
-        #Sign the final transaction
-        signed_final = do_rpc("signrawtransaction", hexstring=combined_raw)
-        signed_hex = signed_final["hex"]
-        
-        mem_accept = do_rpc("testmempoolaccept", rawtxs=[signed_hex])
-
-        if(mem_accept and mem_accept[0]["allowed"]):
-          print("Accepted to mempool!")
-          tx_allowed = True
-          tx_final = signed_hex
-          break
-        elif(mem_accept and mem_accept[0]["reject-reason"]=="66: min relay fee not met"):
-          fee_test -= 0.0001
-        else:
-          print(mem_accept)
-          print("Raw")
-          print(combined_raw)
-          print("Signed")
-          print(signed_final)
-          print("!!Error!!")
-          break
+    ##
+    ##  Complete buy orders (we are selling an asset for rvn)
+    ##
     elif self.type == "buy":
-      #Buy order means WE are selling
-      print("You are selling {} x [{}] for {} RVN".format(self.quantity, self.asset, self.totalPrice()))
+      #Buy order means WE are selling, We need to provide assets
+      print("You are selling {} x [{}] for {} RVN"\
+        .format(self.out_quantity, self.asset(), self.total_price()))
       
-      #Search for valid UTXO, no need for exact match
-      asset_utxo = swap_storage.find_utxo("asset", self.quantity, name=self.asset, exact=False, skip_locks=True)
-      if(not asset_utxo):
-        print("Unable to find a single UTXO for purchasing. Does not combine automatically yet")
-        exit()
-
-      #Add our asset input
-      final_vin.append({"txid":asset_utxo["txid"], "vout":asset_utxo["vout"]})
-
-      #NOTE: self.destination is where the assets are going, not our wallet
-      #hence the call to getnewaddress. Should support explicitly setting from the user
-      target_addr = do_rpc("getnewaddress")
-      print("Funds are being sent to {}".format(target_addr))
-
-      #Add asset change if needed
-      if(asset_utxo["amount"] > self.quantity):
-        asset_change_addr = do_rpc("getnewaddress")
-        print("Asset change being sent to {}".format(asset_change_addr))
-        final_vout[asset_change_addr] = make_transfer(self.asset, asset_utxo["amount"] - self.quantity)
+      #Add needed asset inputs
+      fund_asset_transaction_raw(swap_storage, do_rpc, self.out_type, self.out_quantity, final_vin, final_vout)
+      #Designate how much rvn we expect to get      
+      recv_rvn = self.total_price()
       
-      final_vout[target_addr] = 0
 
-      print("Final Vin: ", final_vin)
-      print("Final Vout: ", final_vout)
-        
-      test_create = do_rpc("createrawtransaction", inputs=final_vin, outputs=final_vout)
-      estimated_fee = 0.01 * len(test_create) / 2 / 1024 #2 hex chars = 1 byte
+    ##
+    ##  Complete trade orders (We are exchange assets for assets)
+    ##
+    elif self.type == "trade":
+      #Trade order means WE are providing and reciving assets
+      print("You are trading {}x of YOUR [{}] for {}x of THEIR [{}]"\
+        .format(self.out_quantity, self.out_type, self.in_quantity, self.in_type))
+      
+      #Send output assets to target_addr
+      final_vout[target_addr] = make_transfer(self.in_type, self.in_quantity)
+      #Add needed asset inputs
+      fund_asset_transaction_raw(swap_storage, do_rpc, self.out_type, self.out_quantity, final_vin, final_vout)
 
-      fee_test = float(self.decoded["src_vout"]["value"]) - estimated_fee
+    ##  Unkown order type
+    else:
+      raise Exception("Unkown swap type {}".format(self.type))
 
-      #Jenky AF, no great way to estimate raw fee from rpc, so lower and test in mempool until good
-      while fee_test > 0:
-        final_vout[target_addr] = round(fee_test, 8)
+    #We only have a single output when buying (the rvn) so no need to generate an addr in that case.
+    #Just use the supplied one
+    rvn_addr = target_addr if self.type == "buy" else do_rpc("getnewaddress")
 
-        #Build final combined raw transaction
-        final_raw = do_rpc("createrawtransaction", inputs=final_vin, outputs=final_vout)
-        
-        #Merge the signed tx from the original order
-        combined_raw = do_rpc("combinerawtransaction", txs=[final_raw, self.raw])
-        
-        #Sign our part with our keys
-        signed_raw = do_rpc("signrawtransaction", hexstring=combined_raw)
-        signed_hex = signed_raw["hex"]
+    #Add needed ins/outs needed to handle the rvn disbalance in the transaction
+    funded_finale = fund_transaction_final(swap_storage, do_rpc, send_rvn, recv_rvn, rvn_addr, final_vin, final_vout, self.raw)
+    if not funded_finale:
+      raise Exception("Funding raw transaction failed")
 
-        mem_accept = do_rpc("testmempoolaccept", rawtxs=[signed_hex])
+    #Build final funded raw transaction
+    final_raw = do_rpc("createrawtransaction", inputs=final_vin, outputs=final_vout)
+    #Merge the signed tx from the original order
+    combined_raw = do_rpc("combinerawtransaction", txs=[final_raw, self.raw])
+    #Sign our inputs/outputs
+    signed_hex = do_rpc("signrawtransaction", hexstring=combined_raw)["hex"]
+    #Finally, Test mempool acceptance
+    mem_accept = do_rpc("testmempoolaccept", rawtxs=[signed_hex])
 
-        if(mem_accept and mem_accept[0]["allowed"]):
-          print("Accepted to mempool!")
-          tx_allowed = True
-          tx_final = signed_hex
-          break
-        elif(mem_accept and mem_accept[0]["reject-reason"]=="66: min relay fee not met"):
-          fee_test -= 0.0001
-        else:
-          print(mem_accept)
-          print("Test Create")
-          print(test_create)
-          print("Final Raw")
-          print(final_raw)
-          print("!!Error!!")
-          break
+    if(mem_accept and mem_accept[0]["allowed"]):
+      print("Accepted to mempool!")
+      tx_allowed = True
+      tx_final = signed_hex
+    elif(mem_accept and mem_accept[0]["reject-reason"]=="66: min relay fee not met"):
+      print("Min fee not met")
+      #raise Exception("Fee Error")
+      tx_allowed = True
+      tx_final = signed_hex
+    else:
+      print(mem_accept)
+      print("Final Raw")
+      print(final_raw)
+      if final_raw:
+        print("Decoded")
+        print(do_rpc("decoderawtransaction", hexstring=final_raw))
+      print("!!Error!!")
+      raise Exception("Error Building TX")
 
     #remove this so it doesn't get encoded to json later
     del(self.decoded)
@@ -227,7 +221,6 @@ class SwapTransaction():
       swap_vin = parsed["vin"][0]
       swap_vout = parsed["vout"][0]
 
-      order_type = "buy" if swap_vout["scriptPubKey"]["type"] == "transfer_asset" else "sell"
       #Decode full here because we liekly don't have this transaction in our mempool
       #And we probably aren't runnin a full node
       vin_tx = decode_full(swap_vin["txid"])
@@ -238,24 +231,59 @@ class SwapTransaction():
         return None
 
       src_vout = vin_tx["vout"][swap_vin["vout"]]
-      
+      in_type = src_vout["scriptPubKey"]["type"]
+      out_type = swap_vout["scriptPubKey"]["type"]
+      order_type = "unknown"
+
+      print("In: {}, Out: {}".format(in_type, out_type))
+
+      if in_type == "transfer_asset" and out_type == "transfer_asset":
+        order_type = "trade"
+      elif in_type == "transfer_asset":
+        order_type = "sell"
+      elif out_type == "transfer_asset":
+        order_type = "buy"
+
+      if order_type == "unknown":
+        raise Exception("Uknonwn trade type")
+
+      in_type = ""
+      out_type = ""
+      in_qty = 0
+      out_qty = 0
+
       #Pull asset data based on order type
-      if order_type == "sell":
-        vout_data = swap_vout["value"]
-        asset_data = src_vout["scriptPubKey"]["asset"]
-        total_price = vout_data
-      else:
+      if order_type == "buy":
         asset_data = swap_vout["scriptPubKey"]["asset"]
         vout_data = make_transfer(asset_data["name"], asset_data["amount"])
-        total_price = src_vout["value"]
 
-      unit_price = float(total_price) / float(asset_data["amount"])
+        in_type = "rvn"
+        in_qty = src_vout["value"]
+        out_type = asset_data["name"]
+        out_qty = asset_data["amount"]
+      elif order_type == "sell":
+        asset_data = src_vout["scriptPubKey"]["asset"]
+        vout_data = swap_vout["value"]
+
+        in_type = asset_data["name"]
+        in_qty = asset_data["amount"]
+        out_type = "rvn"
+        out_qty = swap_vout["value"]
+      elif order_type == "trade":
+        asset_data = swap_vout["scriptPubKey"]["asset"]
+        vout_data = make_transfer(asset_data["name"], asset_data["amount"])
+        
+        in_type = src_vout["scriptPubKey"]["asset"]["name"]
+        in_qty = src_vout["scriptPubKey"]["asset"]["amount"]
+        out_type = swap_vout["scriptPubKey"]["asset"]["name"]
+        out_qty = swap_vout["scriptPubKey"]["asset"]["amount"]
 
       return SwapTransaction({
-        "asset": asset_data['name'], 
+        "in_type": in_type,
+        "out_type": out_type,
+        "in_quantity": in_qty,
+        "out_quantity": out_qty,
         "own": False,
-        "quantity": float(asset_data['amount']),
-        "unit_price": unit_price,
         "utxo": swap_vin["txid"] + "|" + str(swap_vin["vout"]),
         "destination": swap_vout["scriptPubKey"]["addresses"][0],
         "state": "new",

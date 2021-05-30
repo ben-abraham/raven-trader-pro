@@ -45,6 +45,7 @@ rpcpassword=<password>
 - [ ] Settings menu
 - [ ] -- Preferred rvn/asset destination address
 - [ ] -- Previous order history age (remove records after x days)
+- [ ] -- Adjustable fee rate
 - [ ] IPFS content preview
 
 ## Side-Channel Support ##

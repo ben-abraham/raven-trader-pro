@@ -17,6 +17,7 @@ from swap_transaction import SwapTransaction
 from order_details import OrderDetailsDialog
 from swap_storage import SwapStorage
 from new_order import NewOrderDialog
+from new_trade import NewTradeDialog
 
 class MainWindow(QMainWindow):
   def __init__(self, storage, *args, **kwargs):
@@ -28,17 +29,24 @@ class MainWindow(QMainWindow):
 
     self.btnNewBuyOrder.clicked.connect(self.new_buy_order)
     self.btnNewSellOrder.clicked.connect(self.new_sell_order)
+    self.btnNewTradeOrder.clicked.connect(self.new_trade_order)
     self.btnCompleteOrder.clicked.connect(self.complete_order)
 
     self.lstBuyOrders.itemDoubleClicked.connect(self.view_order_details)
     self.lstSellOrders.itemDoubleClicked.connect(self.view_order_details)
+    self.lstTradeOrders.itemDoubleClicked.connect(self.view_order_details)
     self.lstPastOrders.itemDoubleClicked.connect(self.view_order_details)
     self.lstCompletedOrders.itemDoubleClicked.connect(self.view_order_details)
 
     self.updateTimer = QTimer(self)
     self.updateTimer.timeout.connect(self.mainWindowUpdate)
     self.updateTimer.start(10 * 1000)
+    #try:
     self.mainWindowUpdate()
+    #except:
+    #  print("ERROR: Initial grid update failed. This is usually due to a new order format json. Backing up and clearing old data.")
+    #  backup_remove_file(SWAP_STORAGE_PATH)
+    #  backup_remove_file(LOCK_STORAGE_PATH)
 
   def open_swap_menu(self, list, list_item, click_position, swap):
     menu = QMenu()
@@ -57,8 +65,8 @@ class MainWindow(QMainWindow):
     elif action == updateAction:
       (response, new_price) = self.update_order_details(list_item)
       if response:
-        print("Updated Order - Old:{} RVN \t New:{} RVN".format(swap.unit_price, new_price))
-        swap.unit_price = new_price
+        print("Updated Order - Old:{:.8g} RVN \t New:{:.8g} RVN".format(swap.unit_price(), new_price))
+        swap.set_unit_price(new_price)
         swap.sign_partial()
         self.swap_storage.save_swaps()
         self.view_order_details(list_item)
@@ -90,9 +98,11 @@ class MainWindow(QMainWindow):
           update_response = show_prompt("Update Price?", "Sent! TXID: {}".format(sent_txid), "Would you like to create a new order against the invalidated UTXO?", parent=self)
           if update_response == QMessageBox.Yes:
             if swap.type == "buy":
-              self.new_buy_order({"asset": swap.asset, "quantity": swap.quantity, "unit_price": swap.unit_price, "waiting": sent_txid})
+              self.new_buy_order({"asset": swap.asset(), "quantity": swap.out_quantity, "unit_price": swap.unit_price(), "waiting": sent_txid})
             elif swap.type == "sell":
-              self.new_sell_order({"asset": swap.asset, "quantity": swap.quantity, "unit_price": swap.unit_price, "waiting": sent_txid})
+              self.new_sell_order({"asset": swap.asset(), "quantity": swap.out_quantity, "unit_price": swap.unit_price(), "waiting": sent_txid})
+            elif swap.type == "trade":
+              self.new_trade_order(swap)
         else:
           print("Dont Invalidate!")
     elif action == removeCompletedAction:
@@ -140,6 +150,22 @@ class MainWindow(QMainWindow):
       self.swap_storage.save_swaps()
       self.update_lists()
       details = OrderDetailsDialog(sell_swap, self.swap_storage, parent=self, dialog_mode="details")
+      details.exec_()
+
+  def new_trade_order(self, prefill_swap=None):
+    prefill = None
+    trade_dialog = NewTradeDialog(self.swap_storage, prefill=prefill, parent=self)
+    if(trade_dialog.exec_()):
+      trade_swap = trade_dialog.build_order()
+      if not trade_swap.destination:
+        trade_swap.destination = do_rpc("getnewaddress")
+
+      trade_swap.sign_partial()
+      print("New Trade: ", json.dumps(trade_swap.__dict__))
+      self.swap_storage.add_swap(trade_swap)
+      self.swap_storage.save_swaps()
+      self.update_lists()
+      details = OrderDetailsDialog(trade_swap, self.swap_storage, parent=self, dialog_mode="details")
       details.exec_()
 
   def complete_order(self):
@@ -207,10 +233,11 @@ class MainWindow(QMainWindow):
           swap.txid = swap_txid
           self.swap_storage.save_swaps()
 
-    self.add_update_swap_items(self.lstBuyOrders,       [swap for swap in self.swap_storage.swaps if swap.state == "new" and swap.type == "buy" ])
-    self.add_update_swap_items(self.lstSellOrders,      [swap for swap in self.swap_storage.swaps if swap.state == "new" and swap.type == "sell"])
-    self.add_update_swap_items(self.lstPastOrders,      [swap for swap in self.swap_storage.swaps if swap.state == "completed" and swap.own     ])
-    self.add_update_swap_items(self.lstCompletedOrders, [swap for swap in self.swap_storage.swaps if swap.state == "completed" and not swap.own ])
+    self.add_update_swap_items(self.lstBuyOrders,       [swap for swap in self.swap_storage.swaps if swap.state == "new" and swap.type == "buy"  ])
+    self.add_update_swap_items(self.lstSellOrders,      [swap for swap in self.swap_storage.swaps if swap.state == "new" and swap.type == "sell" ])
+    self.add_update_swap_items(self.lstTradeOrders,     [swap for swap in self.swap_storage.swaps if swap.state == "new" and swap.type == "trade"])
+    self.add_update_swap_items(self.lstPastOrders,      [swap for swap in self.swap_storage.swaps if swap.state == "completed" and swap.own      ])
+    self.add_update_swap_items(self.lstCompletedOrders, [swap for swap in self.swap_storage.swaps if swap.state == "completed" and not swap.own  ])
     
     self.add_update_asset_items(self.lstMyAssets,       [self.swap_storage.assets[asset_name] for asset_name in self.swap_storage.my_asset_names])
 

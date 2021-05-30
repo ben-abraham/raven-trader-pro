@@ -134,7 +134,6 @@ class SwapStorage:
     return None
 
   def find_utxo_set(self, type, quantity, mode="combine", name=None, skip_locks=False):
-    print("Finding UTXO set for {} {}".format(quantity, type))
     found_set = None
     total = 0
 
@@ -179,14 +178,12 @@ class SwapStorage:
         found_set.append(removed)
 
     if total >= quantity:
-      print("Num UTXO: {}".format(len(found_set)))
-      print("Total: {}".format(total))
-      print("Change: {}".format(total - quantity))
+      print("{} UTXOs: {} Requested: {:.8g} Total: {:.8g} Change: {:.8g}".format(type, len(found_set), quantity, total, total - quantity))
       return (total, found_set)
     else:
       print("Not enough funds found")
-      print("Total: {}".format(total))
-      print("Missing: {}".format(total - quantity))
+      print("Total: {:.8g}".format(total))
+      print("Missing: {:.8g}".format(total - quantity))
       return (None, None)
 
   #check if a swap's utxo is still unspent
@@ -241,7 +238,7 @@ class SwapStorage:
     if only_orders:
       for swap in self.swaps:
         if swap.type == "buy" and swap.state == "new":
-          total += swap.totalPrice()
+          total += swap.total_price()
     else:
       for lock in self.locks:
         if lock["type"] == "rvn":
@@ -253,7 +250,7 @@ class SwapStorage:
     if only_orders:
       for swap in self.swaps:
         if swap.type == "sell" and swap.state == "new":
-          total += swap.quantity
+          total += swap.quantity()
     else:
       for lock in self.locks:
         if lock["type"] == "asset":

@@ -42,30 +42,54 @@ class OrderDetailsDialog(QDialog):
   def update_for_swap(self, swap):
     self.lblMine.setText("Yes" if swap.own else "No")
     self.lblStatus.setText(swap.state)
-    if swap.own:
-      self.lblType.setText("Buy - You want to purchase" if swap.type == "buy" else "Sell - You want to sell")
-    else:
-      self.lblType.setText("Sale - You want to sell to a buyer" if swap.type == "buy" else "Purchase - You want to buy someone's sale")
-    self.lblAsset.setText(swap.asset)
-    self.lblQuantity.setText(str(swap.quantity))
+    self.lblAsset.setText(swap.asset())
+    
+    if swap.type == "buy":
+      self.lblTotalPrice.setText("{:.8g} RVN".format(swap.total_price()))
+      if swap.own:
+        self.lblType.setText("Buy - You want to purchase.")
+      else:
+        self.lblType.setText("Sale - You want to sell to a buyer.")
+    
+    elif swap.type == "sell":
+      self.lblTotalPrice.setText("{:.8g} RVN".format(swap.total_price()))
+      if swap.own:
+        self.lblType.setText("Sell - You want to sell.")
+      else:
+        self.lblType.setText("Purchase - You want to buy someone's sale.")
+    
+    elif swap.type == "trade":
+      self.spnUpdateUnitPrice.setSuffix(" " + swap.in_type.upper())
+      self.lblTotalPrice.setText("{:.8g} {}".format(swap.total_price(), swap.in_type.upper()))
+      if swap.own:
+        self.lblType.setText("Trade - You want to trade assets of your own, for different assets.")
+      else:
+        self.lblType.setText("Exchange - You want to exchange assets with another party.")
+        
+
+    self.lblQuantity.setText(str(swap.quantity()))
     self.lblUTXO.setText(swap.utxo)
-    self.spnUpdateUnitPrice.setValue(swap.unit_price)
-    self.lblTotalPrice.setText("{:.8g} RVN".format(swap.totalPrice()))
+    self.spnUpdateUnitPrice.setValue(swap.unit_price())
     self.txtDestination.setText(swap.destination)
 
   def update_labels(self):
     new_price = self.spnUpdateUnitPrice.value()
-    self.lblTotalPrice.setText("{:.8g} RVN".format(new_price * self.swap.quantity))
+    self.lblTotalPrice.setText("{:.8g} {}".format(new_price * self.swap.quantity(), self.swap.out_type.upper()))
 
   def swap_error(self):
     #Sell order means we are buying
-    if self.swap.type == "sell":
-      if self.swap.totalPrice() > self.swap_storage.balance:
-        return "You don't have enough RVN to purchase."
-    else:
-      if self.swap.asset not in self.swap_storage.my_asset_names:
+    if self.swap.type == "buy":
+      if self.swap.asset() not in self.swap_storage.my_asset_names:
         return "You don't own that asset."
-      if self.swap.quantity > self.swap_storage.assets[self.swap.asset]["balance"]:
+      if self.swap.quantity() > self.swap_storage.assets[self.swap.asset()]["balance"]:
+        return "You don't own enough of that asset."
+    elif self.swap.type == "sell":
+      if self.swap.total_price() > self.swap_storage.balance:
+        return "You don't have enough RVN to purchase."
+    elif self.swap.type == "trade":
+      if self.swap.in_type not in self.swap_storage.my_asset_names:
+        return "You don't own that asset."
+      if self.swap.quantity() > self.swap_storage.assets[self.swap.in_type]["balance"]:
         return "You don't own enough of that asset."
 
   def raw_tx_changed(self):
