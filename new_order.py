@@ -77,8 +77,10 @@ class NewOrderDialog(QDialog):
       self.btnCheckAvailable.setText("Yes! - {} total".format(details["amount"]))
       self.spinQuantity.setMaximum(float(details["amount"]))
     else:
+      if self.cmbAssets.currentText().islower():
+        show_error("Error","Asset does not exist! Assets are case-sensitive.")
       self.spinQuantity.setEnabled(False)
-      self.btnCheckAvailable.setText("No!")
+      self.btnCheckAvailable.setText("Asset does not exist!")
     self.update()
 
   def asset_changed(self):

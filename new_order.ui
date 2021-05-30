@@ -47,11 +47,14 @@
      <property name="decimals">
       <number>8</number>
      </property>
-     <property name="value">
-      <number>1</number>
-     </property>
      <property name="minimum">
-      <double>0.00000001</double>
+      <double>0.000000010000000</double>
+     </property>
+     <property name="maximum">
+      <double>21000000000.000000000000000</double>
+     </property>
+     <property name="value">
+      <double>1.000000000000000</double>
      </property>
     </widget>
    </item>
@@ -70,11 +73,14 @@
      <property name="decimals">
       <number>8</number>
      </property>
-     <property name="value">
-      <number>1</number>
-     </property>
      <property name="minimum">
-      <double>0.00000000</double>
+      <double>0.000000000000000</double>
+     </property>
+     <property name="maximum">
+      <double>21000000000.000000000000000</double>
+     </property>
+     <property name="value">
+      <double>1.000000000000000</double>
      </property>
     </widget>
    </item>
