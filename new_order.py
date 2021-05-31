@@ -69,7 +69,12 @@ class NewOrderDialog(QDialog):
 
   def check_available(self):
     #TODO: Save this asset data for later
-    details = do_rpc("getassetdata", asset_name=self.cmbAssets.currentText())
+    asset_name = self.cmbAssets.currentText().replace("!", "")
+    want_admin = False
+    if(asset_name[-1:] == "!"):
+      want_admin = True
+      asset_name = asset_name[:-1]#Take all except !
+    details = do_rpc("getassetdata", asset_name=asset_name)
     self.asset_exists = True if details else False
     self.btnCheckAvailable.setEnabled(False)
     if self.asset_exists:

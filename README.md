@@ -36,16 +36,16 @@ rpcpassword=<password>
 - [x] Soft-locking UTXO's (UTXO's setup on the buy/sell screen are locked to prevent use when setting up future UTXO's.)
 - [x] Soft-Remove Trade Order (Hide, but remember so it can be displayed if executed.)
 - [x] Hard-Remove Trade Order (Invalidate the previous UTXO by using it in a transaction to yourself.)
-- [ ] Asset <-> Asset swaps
+- [x] Asset <-> Asset swaps
+- [ ] Bulk buy/sell order creation. Would require making & locking many UTXO's individually.
 - [ ] System notification on completed trade
 - [ ] Proxy asset signing/reissuing. (Party `A` owns admin asset, Party `B` requests a child asset be minted/reissued/etc under `A`'s admin asset.)
 - [ ] Proper asset decimal/metadata support.
 - [ ] Available UTXO dialog (with option to manually lock/unlock? UTXO's.)
-- [ ] Bulk buy/sell order creation. Would require making & locking many UTXO's individually.
 - [ ] Settings menu
 - [ ] -- Preferred rvn/asset destination address
 - [ ] -- Previous order history age (remove records after x days)
-- [ ] -- Adjustable fee rate
+- [ ] -- Adjustable fee rate for optionally faster confirmation
 - [ ] IPFS content preview
 
 ## Side-Channel Support ##

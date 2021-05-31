@@ -27,8 +27,6 @@ class NewTradeDialog(QDialog):
     self.setWindowTitle("New Trade Order")
     self.cmbOwnAsset.setEditable(False)
     self.cmbOwnAsset.addItems(["{} [{}]".format(v, self.swap_storage.assets[v]["balance"]) for v in self.swap_storage.my_asset_names])
-    self.cmbWantAsset.setEditable(False)
-    self.cmbWantAsset.currentTextChanged.connect(self.asset_changed)
     self.cmbWantAsset.addItems(self.swap_storage.my_asset_names)
     self.cmbWantAsset.setCurrentText("")
 
@@ -44,6 +42,7 @@ class NewTradeDialog(QDialog):
 
     self.cmbOwnAsset.currentIndexChanged.connect(self.update)
     self.cmbWantAsset.currentIndexChanged.connect(self.update)
+    self.cmbWantAsset.currentTextChanged.connect(self.asset_changed)
     self.spinOwnQuantity.valueChanged.connect(self.update)
     self.spinWantQuantity.valueChanged.connect(self.update)
 
@@ -83,6 +82,7 @@ class NewTradeDialog(QDialog):
     self.asset_exists = False
     self.btnCheckAvailable.setText("Check Available")
     self.btnCheckAvailable.setEnabled(True)
+    self.update()
 
   def create_utxo(self):
     summary = "Send yourself {} to costruct a trade order?".format("{:.8g}x [{}]".format(self.own_quantity, self.own_asset_name))
@@ -151,7 +151,7 @@ class NewTradeDialog(QDialog):
     self.valid_order = True
 
     self.own_asset_name = self.swap_storage.my_asset_names[self.cmbOwnAsset.currentIndex()]
-    self.want_asset_name = self.swap_storage.my_asset_names[self.cmbWantAsset.currentIndex()]
+    self.want_asset_name = self.cmbWantAsset.currentText()
     self.order_utxo = self.swap_storage.find_utxo("asset", self.own_quantity, name=self.own_asset_name, skip_locks=True, skip_rounded=False)
     self.chkUTXOReady.setText("UTXO Ready ({:.8g}x [{}])".format(self.own_quantity, self.own_asset_name))
     self.lblFinal.setText("Give: {:.8g}x [{}], Get: {:.8g}x [{}]".format(self.own_quantity, self.own_asset_name, self.want_quantity, self.want_asset_name))

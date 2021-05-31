@@ -59,7 +59,7 @@ class OrderDetailsDialog(QDialog):
         self.lblType.setText("Purchase - You want to buy someone's sale.")
     
     elif swap.type == "trade":
-      self.spnUpdateUnitPrice.setSuffix(" " + swap.in_type.upper())
+      self.spnUpdateUnitPrice.setSuffix(" {}/{}".format(swap.out_type.upper(), swap.in_type.upper()) )
       self.lblTotalPrice.setText("{:.8g} {}".format(swap.total_price(), swap.in_type.upper()))
       if swap.own:
         self.lblType.setText("Trade - You want to trade assets of your own, for different assets.")
@@ -87,9 +87,9 @@ class OrderDetailsDialog(QDialog):
       if self.swap.total_price() > self.swap_storage.balance:
         return "You don't have enough RVN to purchase."
     elif self.swap.type == "trade":
-      if self.swap.in_type not in self.swap_storage.my_asset_names:
+      if self.swap.out_type not in self.swap_storage.my_asset_names:
         return "You don't own that asset."
-      if self.swap.quantity() > self.swap_storage.assets[self.swap.in_type]["balance"]:
+      if self.swap.quantity() > self.swap_storage.assets[self.swap.out_type]["balance"]:
         return "You don't own enough of that asset."
 
   def raw_tx_changed(self):
