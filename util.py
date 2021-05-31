@@ -138,16 +138,31 @@ class QTwoLineRowWidget (QWidget):
   def from_swap(swap, **kwargs):
     row = QTwoLineRowWidget()
     row.swap = swap
-    if swap.type == "buy":
-      row.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
-        "Buy" if swap.own else "Sold", swap.quantity(), swap.asset(), swap.total_price(), swap.unit_price()))
-    elif swap.type == "sell":
-      row.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
-        "Sell" if swap.own else "Bought", swap.quantity(), swap.asset(), swap.total_price(), swap.unit_price()))
-    elif swap.type == "trade":
-      row.setTextUp("{} {:.8g}x [{}] for {:.8g} [{}] ({:.8g}x [{}] each)".format(
-        "Trade" if swap.own else "Exchanged", swap.total_price(), swap.in_type, swap.quantity(), swap.asset(), swap.unit_price(), swap.in_type))
-    if swap.state == "completed":
+    if swap.own: #If this is OUR trade, the default language can be used
+      if swap.type == "buy":
+        row.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
+          "Buy", swap.quantity(), swap.asset(), swap.total_price(), swap.unit_price()))
+      elif swap.type == "sell":
+        row.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
+          "Sell", swap.quantity(), swap.asset(), swap.total_price(), swap.unit_price()))
+      elif swap.type == "trade":
+        row.setTextUp("{} {:.8g}x [{}] for {:.8g} [{}] ({:.8g}x [{}] each)".format(
+          "Trade", swap.total_price(), swap.in_type, swap.quantity(), swap.asset(), swap.unit_price(), swap.in_type))
+    else: #If this is someone else's trade, then we need to invert the language
+      #also all listed external orders are already executed, so past-tense
+      if swap.type == "buy":
+        row.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
+          "Sold", swap.quantity(), swap.asset(), swap.total_price(), swap.unit_price()))
+      elif swap.type == "sell":
+        row.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
+          "Bought", swap.quantity(), swap.asset(), swap.total_price(), swap.unit_price()))
+      elif swap.type == "trade":
+        row.setTextUp("{} {:.8g}x [{}] for {:.8g} [{}] ({:.8g}x [{}] each)".format(
+          "Exchanged", swap.total_price(), swap.in_type, swap.quantity(), swap.asset(), swap.unit_price(), swap.in_type))
+
+    if swap.state == "pending":
+      row.setTextDown("Pending in mempool")
+    elif swap.state == "completed":
       if not swap.own:
         row.setTextDown("Completed: {}".format(swap.txid))
       else:

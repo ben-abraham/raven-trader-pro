@@ -55,15 +55,12 @@ def dup_transaction(tx):
 
 def search_swap_tx(utxo):
   utxo_parts = utxo.split("|")
-  height = do_rpc("getblockcount")
-  check_height = height
-  while check_height >= height - 10:
-    hash = do_rpc("getblockhash", height=check_height)
-    details = do_rpc("getblock", blockhash=hash, verbosity=2)
-    for block_tx in details["tx"]:
-      for tx_vin in block_tx["vin"]:
-        if "vout" in tx_vin and block_tx["txid"] == utxo_parts[0] and tx_vin["vout"] == int(utxo_parts[1]):
-          return block_tx["txid"]
-    check_height -= 1
+  wallet_tx = do_rpc("listtransactions", account="", count=10)
+  for tx in wallet_tx:
+    details = do_rpc("getrawtransaction", txid=tx["txid"], verbose=True)
+    for tx_vin in details["vin"]:
+      if ("txid" in tx_vin and "vout" in tx_vin) and \
+        (tx_vin["txid"] == utxo_parts[0] and tx_vin["vout"] == int(utxo_parts[1])):
+        return tx_vin["txid"]
   print("Unable to find transaction for completed swap")
   return None #If we don't find it 10 blocks back, who KNOWS what happened to it

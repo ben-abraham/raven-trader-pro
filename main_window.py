@@ -222,22 +222,33 @@ class MainWindow(QMainWindow):
 
   def update_lists(self):
     #Check for state changes, by looking over UTXO's
-    for swap in self.swap_storage.swaps:
-      if swap.state == "new" and swap.own:
-        #if its no longer unspent, the swap has been executed
-        #and this should be moved to completed
-        if not self.swap_storage.swap_utxo_unspent(swap.utxo):
+    my_swap_checks = [swap for swap in self.swap_storage.swaps if swap.own and swap.state in ["new", "pending"]]
+    for swap in my_swap_checks:
+      #if a trade's UTXO is now spent, then this should be moved to completed
+      mem_spent = self.swap_storage.swap_utxo_spent(swap.utxo) #Spent in mempool or confirmed
+      
+      if mem_spent:
+        confirmed_spent = self.swap_storage.swap_utxo_spent(swap.utxo,in_mempool=False, check_cache=False)
+        if not confirmed_spent and swap.state == "new": #Spent in mempooly only, not confirmed yet
+          print("Swap spent in mempool!")
+          swap.state = "pending"
+          self.swap_storage.save_swaps()
+        elif confirmed_spent:
           swap_txid = search_swap_tx(swap.utxo)
+          #NOTE: the transaction we get back here can be vastly different
+          # if we've signed the same UTXO out w/ multiple Signed Partials
+          #TODO: Reparse the final transaction properly
           print("Swap Completed! txid: ", swap_txid)
           swap.state = "completed"
           swap.txid = swap_txid
           self.swap_storage.save_swaps()
 
+
     self.add_update_swap_items(self.lstBuyOrders,       [swap for swap in self.swap_storage.swaps if swap.state == "new" and swap.type == "buy"  ])
     self.add_update_swap_items(self.lstSellOrders,      [swap for swap in self.swap_storage.swaps if swap.state == "new" and swap.type == "sell" ])
     self.add_update_swap_items(self.lstTradeOrders,     [swap for swap in self.swap_storage.swaps if swap.state == "new" and swap.type == "trade"])
-    self.add_update_swap_items(self.lstPastOrders,      [swap for swap in self.swap_storage.swaps if swap.state == "completed" and swap.own      ])
-    self.add_update_swap_items(self.lstCompletedOrders, [swap for swap in self.swap_storage.swaps if swap.state == "completed" and not swap.own  ])
+    self.add_update_swap_items(self.lstPastOrders,      [swap for swap in self.swap_storage.swaps if (swap.state in ["pending", "completed"]) and swap.own      ])
+    self.add_update_swap_items(self.lstCompletedOrders, [swap for swap in self.swap_storage.swaps if (swap.state in ["pending", "completed"]) and not swap.own  ])
     
     self.add_update_asset_items(self.lstMyAssets,       [self.swap_storage.assets[asset_name] for asset_name in self.swap_storage.my_asset_names])
 

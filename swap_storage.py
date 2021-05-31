@@ -186,10 +186,14 @@ class SwapStorage:
       print("Missing: {:.8g}".format(total - quantity))
       return (None, None)
 
-  #check if a swap's utxo is still unspent
-  #if not then the swap has been executed!
-  def swap_utxo_unspent(self, utxo):
-    return self.search_utxo(utxo) != None
+  #check if a swap's utxo has been spent
+  #if so then the swap has been executed!
+  def swap_utxo_spent(self, utxo, in_mempool=True, check_cache=True):
+    if check_cache:
+      return self.search_utxo(utxo) == None #This will always go away immediately w/ mempool. so in_mempool doesnt work here
+    else:
+      utxo_parts = utxo.split("|")
+      return do_rpc("gettxout", txid=utxo_parts[0], n=int(utxo_parts[1]), include_mempool=in_mempool) == None
 
   def wallet_lock_all_swaps(self):
     #first unlock everything
