@@ -75,6 +75,15 @@ def fund_transaction_final(swap_storage, fn_rpc, send_rvn, recv_rvn, target_addr
 
   return True
 
+def vout_to_utxo(vout, txid, n):
+  if "scriptPubKey" in vout:
+    if "type" in vout["scriptPubKey"] and vout["scriptPubKey"]["type"] == "transfer_asset":
+      return {"txid": txid, "vout": n, "type": "asset", "amount": vout["scriptPubKey"]["asset"]["amount"], "asset": vout["scriptPubKey"]["asset"]["name"]}
+    else:
+      return {"txid": txid, "vout": n, "type": "rvn", "amount": vout["value"]}
+  else:
+    return {"txid": txid, "vout": n, "type": "unknown"}
+
 #
 #Helper function
 #

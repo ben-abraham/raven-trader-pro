@@ -207,17 +207,13 @@ class MainWindow(QMainWindow):
       list.takeItem(0) #keep removing idx 0
 
   def mainWindowUpdate(self):
-    self.swap_storage.load_utxos()
+    self.swap_storage.update_wallet()
 
-    asset_total = 0
-    for asset_name in self.swap_storage.my_asset_names:
-      asset_total += self.swap_storage.assets[asset_name]["balance"]
+    avail_balance = self.swap_storage.available_balance
+    total_balance = self.swap_storage.total_balance
 
-    avail_balance = self.swap_storage.balance - self.swap_storage.locaked_rvn()
-    avail_assets = asset_total - self.swap_storage.locaked_assets()
-
-    self.lblBalanceTotal.setText("Total Balance: {:.8g} RVN [{:.8g} Assets]".format(self.swap_storage.balance, asset_total))
-    self.lblBalanceAvailable.setText("Total Available: {:.8g} RVN [{:.8g} Assets]".format(avail_balance, avail_assets))
+    self.lblBalanceTotal.setText("Total Balance: {:.8g} RVN [{:.8g} Assets]".format(total_balance[0], total_balance[2]))
+    self.lblBalanceAvailable.setText("Total Available: {:.8g} RVN [{:.8g} Assets]".format(avail_balance[0], avail_balance[2]))
     self.update_lists()
 
   def update_lists(self):

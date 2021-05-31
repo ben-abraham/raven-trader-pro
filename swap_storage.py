@@ -20,6 +20,20 @@ class SwapStorage:
     self.swaps = []
     self.locks = []
   
+  def on_load(self):
+    self.load_locked()
+    self.load_swaps()
+    self.update_wallet()
+    self.refresh_locks()
+
+  def on_close(self):
+    self.save_locked()
+    self.save_swaps()
+
+#
+# File I/O
+#
+
   def load_swaps(self):
     if not os.path.isfile(SWAP_STORAGE_PATH):
       return []
@@ -66,47 +80,151 @@ class SwapStorage:
     self.remove_lock(utxo_parts[0], int(utxo_parts[1]))
     self.swaps.remove(swap)
 
-  def add_lock(self, txid, vout):
-    for lock in self.locks:
-      if txid == lock["txid"] and vout == lock["vout"]:
-        return #Already added
-    print("Locking UTXO {}|{}".format(txid, vout))
+#
+# Balance Calculation
+#
+
+  def calculate_balance(self):
+    bal_total = [0, 0, 0] #RVN, Unique Assets, Asset Total
     for utxo in self.utxos:
-      if txid == utxo["txid"] and vout == utxo["vout"]:
-        self.locks.append({"txid": txid, "vout": vout, "type": "rvn", "amount": utxo["amount"]})
-        return #Locking ravencoin
+      bal_total[0] += utxo["amount"]
     for asset in self.my_asset_names:
-      for a_utxo in self.assets[asset]["outpoints"]:
-        if txid == a_utxo["txid"] and vout == a_utxo["vout"]:
-          self.locks.append({"txid": txid, "vout": vout, "type": "asset", "asset": asset, "amount": a_utxo["amount"]})
-          return #Locking assets
+      bal_total[1] += 1
+      for outpoint in self.assets[asset]["outpoints"]:
+        bal_total[2] += outpoint["amount"]
+    bal_avail = bal_total[:]
 
-  def remove_lock(self, txid, vout):
-    for lock in self.locks:
-      if txid == lock["txid"] and vout == lock["vout"]:
-        self.locks.remove(lock)
+    for my_lock in self.locks:
+      if my_lock["type"] == "rvn":
+        bal_avail[0] -= my_lock["amount"]
+      elif my_lock["type"] == "asset":
+        bal_avail[2] -= my_lock["amount"]
+      continue
 
-  def refresh_locks(self):
+    self.available_balance = tuple(bal_avail)
+    self.total_balance = tuple(bal_total)
+
+#
+# Wallet Interaction
+#
+
+  def wallet_prepare_transaction(self):
+    print("Preparing for a transaction")
+    if LOCK_UTXOS_IN_WALLET:
+      print("Locking")
+    else:
+      print("Non-Locking")
+
+  def wallet_completed_transaction(self):
+    print("Completed a transaction")
+    if LOCK_UTXOS_IN_WALLET:
+      print("Locking")
+    else:
+      print("Non-Locking")
+
+  def wallet_lock_all_swaps(self):
+    #first unlock everything
+    self.wallet_unlock_all()
+    #now build all orders and send it in one go
+    locked_utxos = []
     for swap in self.swaps:
-      if swap.state == "new":
-        utxo_parts = swap.utxo.split("|")
-        self.add_lock(utxo_parts[0], int(utxo_parts[1]))
+      if swap.state in ["new", "pending"]:
+        locked_utxos.append(swap.utxo)
+    print("Locking {} UTXO's for buy orders".format(len(locked_utxos)))
+    self.wallet_lock_utxos(locked_utxos)
 
-  def load_utxos(self):
+  def wallet_lock_utxos(self, utxos=[], lock = True):
+    txs = []
+    for utxo in utxos:
+      (txid, vout) = utxo.split("|")
+      vout = int(vout)
+      txs.append({"txid":txid,"vout":vout})
+    do_rpc("lockunspent", unlock=not lock, transactions=txs)
+
+  def wallet_lock_single(self, txid=None, vout=None, utxo=None, lock = True):
+    if utxo != None and txid == None and vout == None:
+      (txid, vout) = utxo.split("|")
+      vout = int(vout)
+    do_rpc("lockunspent", unlock=not lock, transactions=[{"txid":txid,"vout":vout}])
+
+  def load_wallet_locked(self):
+    if LOCK_UTXOS_IN_WALLET:
+      wallet_locks = do_rpc("listlockunspent")
+      for lock in wallet_locks:
+        txout = do_rpc("gettxout", txid=lock["txid"], n=int(lock["vout"]), include_mempool=True)
+        utxo = vout_to_utxo(txout, lock["txid"], int(lock["vout"]))
+        if utxo["type"] == "rvn":
+          self.utxos.append(utxo)
+        elif utxo["type"] == "asset":
+          if utxo["asset"] not in self.assets:
+            self.assets[utxo["asset"]] = []
+          self.assets[utxo["asset"]]["outpoints"].append(utxo)
+
+  def wallet_unlock_all(self):
+    do_rpc("lockunspent", unlock=True)
+
+  def update_wallet(self):
     #Locked UTXO's are excluded from the list command
     self.utxos = do_rpc("listunspent")
       
     #Pull list of assets for selecting
     self.assets = do_rpc("listmyassets", asset="", verbose=True)
+
+    #Load details of wallet-locked transactions, inserted into self.utxos/assets
+    self.load_wallet_locked()
+
     self.my_asset_names = [*self.assets.keys()]
     #Cheat a bit and embed the asset name in it's metadata. This simplified things later
     for name in self.my_asset_names:
       self.assets[name]["name"] = name
 
-    total_balance = 0
-    for utxo in self.utxos:
-      total_balance += utxo["amount"]
-    self.balance = total_balance
+    self.calculate_balance()
+
+#
+# Lock Management
+#
+
+  def add_lock(self, txid=None, vout=None, utxo=None):
+    if utxo != None and txid == None and vout == None:
+      (txid, vout) = utxo.split("|")
+      vout = int(vout)
+    for lock in self.locks:
+      if txid == lock["txid"] and vout == lock["vout"]:
+        return #Already added
+    print("Locking UTXO {}|{}".format(txid, vout))
+    txout = do_rpc("gettxout", txid=txid, n=vout, include_mempool=True) #True means this will be None when spent in mempool
+    utxo = vout_to_utxo(txout, txid, vout)
+    self.locks.append(utxo)
+    if LOCK_UTXOS_IN_WALLET:
+      self.wallet_lock_single(txid, vout)
+
+  def remove_lock(self, txid=None, vout=None, utxo=None):
+    if utxo != None and txid == None and vout == None:
+      (txid, vout) = utxo.split("|")
+      vout = int(vout)
+    for lock in self.locks:
+      if txid == lock["txid"] and vout == lock["vout"]:
+        self.locks.remove(lock)
+    print("Unlocking UTXO {}|{}".format(txid, vout))
+    #in wallet-lock mode we need to return these to the wallet
+    if LOCK_UTXOS_IN_WALLET:
+      self.wallet_lock_single(txid, vout, lock=False)
+
+  def refresh_locks(self):
+    self.locks = []
+    for swap in self.swaps:
+      if swap.state in ["new", "pending"]:
+        self.add_lock(utxo=swap.utxo)
+
+  def lock_quantity(self, type):
+    if type == "rvn":
+      return sum([float(lock["amount"]) for lock in self.locks if lock["type"] == "rvn"])
+    else:
+      return sum([float(lock["amount"]) for lock in self.locks if lock["type"] == "asset" and lock["name"] == type])
+
+#
+# UTXO Searching
+#
 
   def find_utxo(self, type, quantity, name=None, exact=True, skip_locks=False, skip_rounded=True, sort_utxo=False):
     #print("Find UTXO: {} Exact: {} Skip Locks: {}".format(quantity, exact, skip_locks))
@@ -195,18 +313,6 @@ class SwapStorage:
       utxo_parts = utxo.split("|")
       return do_rpc("gettxout", txid=utxo_parts[0], n=int(utxo_parts[1]), include_mempool=in_mempool) == None
 
-  def wallet_lock_all_swaps(self):
-    #first unlock everything
-    self.wallet_unlock_all()
-    #now build all orders and send it in one go
-    locked_utxos = []
-    for swap in self.swaps:
-      if swap.state == "new":
-        utxo_parts = swap.utxo.split("|")
-        locked_utxos.append({"txid":utxo_parts[0],"vout":int(utxo_parts[1])})
-    print("Locking {} UTXO's for buy orders".format(len(locked_utxos)))
-    do_rpc("lockunspent", unlock=False, transactions=locked_utxos)
-
   def search_utxo(self, utxo):
     utxo_parts = utxo.split("|")
     for utxo in self.utxos:
@@ -218,14 +324,6 @@ class SwapStorage:
           return {"type": "asset", "utxo": a_utxo, "name": asset_name}
     return None
 
-  def wallet_lock_single(self, swap):
-    utxo_parts = swap.utxo.split("|")
-    lock_utxo = [{"txid":utxo_parts[0],"vout":int(utxo_parts[1])}]
-    do_rpc("lockunspent", unlock=False, transactions=lock_utxo)
-
-  def wallet_unlock_all(self):
-    do_rpc("lockunspent", unlock=True)
-
   def is_taken(self, utxo, skip_locks=False):
     if not skip_locks:
       for lock in self.locks:
@@ -236,27 +334,3 @@ class SwapStorage:
       if swap.utxo == expected:
         return True
     return False
-
-  def locaked_rvn(self, only_orders=True):
-    total = 0
-    if only_orders:
-      for swap in self.swaps:
-        if swap.type == "buy" and swap.state == "new":
-          total += swap.total_price()
-    else:
-      for lock in self.locks:
-        if lock["type"] == "rvn":
-          total += lock["amount"]
-    return total
-
-  def locaked_assets(self, only_orders=True):
-    total = 0
-    if only_orders:
-      for swap in self.swaps:
-        if swap.type == "sell" and swap.state == "new":
-          total += swap.quantity()
-    else:
-      for lock in self.locks:
-        if lock["type"] == "asset":
-          total += lock["amount"]
-    return total

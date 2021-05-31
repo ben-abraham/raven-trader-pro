@@ -22,7 +22,7 @@ class NewOrderDialog(QDialog):
     if(self.mode != "buy" and self.mode != "sell"):
       raise "Invalid Order Mode"
     
-    self.swap_storage.load_utxos()
+    self.swap_storage.update_wallet()
     self.waiting_txid = None
     self.asset_exists = True
     self.all_utxo = False #allow perfectly rounded UTXO's only when waiting from the start
@@ -156,7 +156,7 @@ class NewOrderDialog(QDialog):
       self.btnCreateUTXO.setText("Create Order UTXO")
       self.updateTimer.stop()
       self.updateTimer = None
-      self.swap_storage.load_utxos() #need to re-load UTXO's to find the new one
+      self.swap_storage.update_wallet() #need to re-load UTXO's to find the new one
       self.update()
       #Lock the newly created UTXO
       self.swap_storage.add_lock(self.order_utxo["txid"], self.order_utxo["vout"])

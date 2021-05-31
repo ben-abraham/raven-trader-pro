@@ -33,10 +33,10 @@ def decode_full(txid):
   return result
 
 def check_unlock(timeout = 10):
-  print("Unlocking Wallet for {}s".format(timeout))
   phrase_test = do_rpc("help", command="walletpassphrase")
   #returns None if no password set
   if(phrase_test.startswith("walletpassphrase")):
+    print("Unlocking Wallet for {}s".format(timeout))
     do_rpc("walletpassphrase", passphrase=RPC_UNLOCK_PHRASE, timeout=timeout)
 
 def dup_transaction(tx):
