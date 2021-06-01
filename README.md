@@ -37,6 +37,7 @@ rpcpassword=<password>
 - [x] Soft-Remove Trade Order (Hide, but remember so it can be displayed if executed.)
 - [x] Hard-Remove Trade Order (Invalidate the previous UTXO by using it in a transaction to yourself.)
 - [x] Asset <-> Asset swaps
+- [x] [Optional] Hard-Locking of UTXO's (UTXOs will appear gone and will be unspendable to core wallet.) This prevents accidental order invalidation
 - [ ] Bulk buy/sell order creation. Would require making & locking many UTXO's individually.
 - [ ] System notification on completed trade
 - [ ] Proxy asset signing/reissuing. (Party `A` owns admin asset, Party `B` requests a child asset be minted/reissued/etc under `A`'s admin asset.)
