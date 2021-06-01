@@ -132,9 +132,9 @@ class SwapStorage:
     #now build all orders and send it in one go
     locked_utxos = []
     for swap in self.swaps:
-      if swap.state in ["new", "pending"]:
-        locked_utxos.append(swap.utxo)
-    print("Locking {} UTXO's for buy orders".format(len(locked_utxos)))
+      for utxo in swap.order_utxos:
+        locked_utxos.append(utxo)
+    print("Locking {} UTXO's from orders".format(len(locked_utxos)))
     self.wallet_lock_utxos(locked_utxos)
 
   def wallet_lock_utxos(self, utxos=[], lock = True):
@@ -211,10 +211,11 @@ class SwapStorage:
       self.wallet_lock_single(txid, vout, lock=False)
 
   def refresh_locks(self):
-    self.locks = []
     for swap in self.swaps:
       for utxo in swap.order_utxos:
         self.add_lock(utxo=utxo)
+    if LOCK_UTXOS_IN_WALLET:
+      self.wallet_lock_all_swaps()
 
   def lock_quantity(self, type):
     if type == "rvn":

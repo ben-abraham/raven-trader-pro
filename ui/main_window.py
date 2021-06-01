@@ -33,9 +33,9 @@ class MainWindow(QMainWindow):
     self.btnNewTradeOrder.clicked.connect(self.new_trade_order)
     self.btnCompleteOrder.clicked.connect(self.complete_order)
 
-    self.lstBuyOrders.itemDoubleClicked.connect(self.view_order_details)
-    self.lstSellOrders.itemDoubleClicked.connect(self.view_order_details)
-    self.lstTradeOrders.itemDoubleClicked.connect(self.view_order_details)
+    self.lstAllOrders.itemDoubleClicked.connect(self.view_order_details)
+    #self.lstSellOrders.itemDoubleClicked.connect(self.view_order_details)
+    #self.lstTradeOrders.itemDoubleClicked.connect(self.view_order_details)
     self.lstPastOrders.itemDoubleClicked.connect(self.view_order_details)
     self.lstCompletedOrders.itemDoubleClicked.connect(self.view_order_details)
 
@@ -247,10 +247,11 @@ class MainWindow(QMainWindow):
     #      swap.txid = swap_txid
     #      self.swap_storage.save_swaps()
 
+    self.add_update_trade_items(self.lstAllOrders, self.swap_storage.swaps)
 
-    self.add_update_trade_items(self.lstBuyOrders,       [swap for swap in self.swap_storage.swaps if swap.type == "buy"  ])
-    self.add_update_trade_items(self.lstSellOrders,      [swap for swap in self.swap_storage.swaps if swap.type == "sell" ])
-    self.add_update_trade_items(self.lstTradeOrders,     [swap for swap in self.swap_storage.swaps if swap.type == "trade"])
+    #self.add_update_trade_items(self.lstBuyOrders,       [swap for swap in self.swap_storage.swaps if swap.type == "buy"  ])
+    #self.add_update_trade_items(self.lstSellOrders,      [swap for swap in self.swap_storage.swaps if swap.type == "sell" ])
+    #self.add_update_trade_items(self.lstTradeOrders,     [swap for swap in self.swap_storage.swaps if swap.type == "trade"])
     #self.add_update_swap_items(self.lstPastOrders,      [swap for swap in self.swap_storage.swaps if (swap.state in ["pending", "completed"]) and swap.own      ], QTwoLineRowWidget.from_swap)
     #self.add_update_swap_items(self.lstCompletedOrders, [swap for swap in self.swap_storage.swaps if (swap.state in ["pending", "completed"]) and not swap.own  ], QTwoLineRowWidget.from_swap)
     
