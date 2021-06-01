@@ -80,7 +80,8 @@ class SwapTrade():
     for ready_utxo in ready_utxo[:missing_trades]:
       use_utxo = make_utxo(ready_utxo)
       self.order_utxos.append(use_utxo)
-      self.transactions.append(self.create_trade_transaction(use_utxo))
+      self.transactions.append(self.create_trade_transaction(use_utxo, self.current_number))
+      self.current_number += 1
       swap_storage.add_lock(utxo=use_utxo)
     return True #Pool now filled (/or there are enough items to fill it otherwise)
 
@@ -143,7 +144,7 @@ class SwapTrade():
   def can_create_single_order(self, swap_storage):
     return self.attempt_fill_trade_pool(swap_storage, max_add=1)
 
-  def create_trade_transaction(self, utxo):
+  def create_trade_transaction(self, utxo, number):
     #TODO: Validate utxo is correctly sized
     
     return SwapTransaction({
@@ -151,6 +152,7 @@ class SwapTrade():
       "out_type": self.out_type,
       "in_quantity": self.in_quantity,
       "out_quantity": self.out_quantity,
+      "number": number,
       "own": True,
       "utxo": utxo,
       "destination": self.destination,
@@ -170,6 +172,7 @@ class SwapTrade():
       "destination": destination,
       "type": trade_type,
       "order_count": order_count,
+      "current_number": 0,
       "executed_count": 0,
       "order_utxos": [],
       "executed_utxos": [],
