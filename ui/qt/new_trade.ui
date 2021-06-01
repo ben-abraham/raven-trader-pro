@@ -53,6 +53,11 @@
 
    <item row="3" column="0">
     <widget class="QLabel" name="lblWhatUTXO">
+      <property name="font">
+        <font>
+        <underline>true</underline>
+        </font>
+      </property>
      <property name="cursor">
       <cursorShape>WhatsThisCursor</cursorShape>
      </property>

@@ -13,38 +13,26 @@ from rvn_rpc import *
 
 from swap_transaction import SwapTransaction
 
-class NewOrderDialog(QDialog):
-  def __init__(self, mode, swap_storage, prefill=None, parent=None, **kwargs):
+class NewTradeDialog(QDialog):
+  def __init__(self, swap_storage, prefill=None, parent=None, **kwargs):
     super().__init__(parent, **kwargs)
-    uic.loadUi("new_order.ui", self)
-    self.mode = mode
+    uic.loadUi("ui/qt/new_trade.ui", self)
     self.swap_storage = swap_storage
-    if(self.mode != "buy" and self.mode != "sell"):
-      raise "Invalid Order Mode"
     
     self.swap_storage.update_wallet()
     self.waiting_txid = None
     self.asset_exists = True
     self.all_utxo = False #allow perfectly rounded UTXO's only when waiting from the start
 
-    if self.mode == "buy":
-      self.setWindowTitle("New Buy Order")
-      self.cmbAssets.setEditable(True)
-      self.spinQuantity.setEnabled(False)
-      self.btnCheckAvailable.clicked.connect(self.check_available)
-      self.cmbAssets.currentTextChanged.connect(self.asset_changed)
-      self.cmbAssets.addItems(self.swap_storage.my_asset_names)
-      self.cmbAssets.setCurrentText("")
-    elif self.mode == "sell":
-      self.setWindowTitle("New Sell Order")
-      self.cmbAssets.setEditable(False)
-      self.cmbAssets.addItems(["{} [{}]".format(v, self.swap_storage.assets[v]["balance"]) for v in self.swap_storage.my_asset_names])
-      self.btnCheckAvailable.setVisible(False)
+    self.setWindowTitle("New Trade Order")
+    self.cmbOwnAsset.setEditable(False)
+    self.cmbOwnAsset.addItems(["{} [{}]".format(v, self.swap_storage.assets[v]["balance"]) for v in self.swap_storage.my_asset_names])
+    self.cmbWantAsset.addItems(self.swap_storage.my_asset_names)
+    self.cmbWantAsset.setCurrentText("")
 
     if prefill:
-      self.cmbAssets.setCurrentText(prefill["asset"])
-      self.spinQuantity.setValue(prefill["quantity"])
-      self.spinUnitPrice.setValue(prefill["unit_price"])
+      self.cmbOwnAsset.setCurrentText(prefill["asset"])
+      self.spinOwnQuantity.setValue(prefill["quantity"])
       self.asset_exists = True
       if "waiting" in prefill:
         self.waiting_txid = prefill["waiting"]
@@ -52,9 +40,13 @@ class NewOrderDialog(QDialog):
         self.start_waiting()
         self.wait_timer()
 
-    self.cmbAssets.currentIndexChanged.connect(self.update)
-    self.spinQuantity.valueChanged.connect(self.update)
-    self.spinUnitPrice.valueChanged.connect(self.update)
+    self.cmbOwnAsset.currentIndexChanged.connect(self.update)
+    self.cmbWantAsset.currentIndexChanged.connect(self.update)
+    self.cmbWantAsset.currentTextChanged.connect(self.asset_changed)
+    self.spinOwnQuantity.valueChanged.connect(self.update)
+    self.spinWantQuantity.valueChanged.connect(self.update)
+
+    self.btnCheckAvailable.clicked.connect(self.check_available)
     self.btnCreateUTXO.clicked.connect(self.create_utxo)
     self.lblWhatUTXO.mousePressEvent = self.show_utxo_help #apparently this event is jenky?
     self.update()
@@ -69,7 +61,7 @@ class NewOrderDialog(QDialog):
 
   def check_available(self):
     #TODO: Save this asset data for later
-    asset_name = self.cmbAssets.currentText().replace("!", "")
+    asset_name = self.cmbWantAsset.currentText().replace("!", "")
     want_admin = False
     if(asset_name[-1:] == "!"):
       want_admin = True
@@ -78,53 +70,40 @@ class NewOrderDialog(QDialog):
     self.asset_exists = True if details else False
     self.btnCheckAvailable.setEnabled(False)
     if self.asset_exists:
-      self.spinQuantity.setEnabled(True)
+      self.spinWantQuantity.setEnabled(True)
       self.btnCheckAvailable.setText("Yes! - {} total".format(details["amount"]))
-      self.spinQuantity.setMaximum(float(details["amount"]))
+      self.spinWantQuantity.setMaximum(float(details["amount"]))
     else:
-      if self.cmbAssets.currentText().islower():
-        show_error("Error","Asset does not exist! Assets are case-sensitive.")
-      self.spinQuantity.setEnabled(False)
-      self.btnCheckAvailable.setText("Asset does not exist!")
+      self.spinWantQuantity.setEnabled(False)
+      self.btnCheckAvailable.setText("No!")
     self.update()
 
   def asset_changed(self):
     self.asset_exists = False
     self.btnCheckAvailable.setText("Check Available")
     self.btnCheckAvailable.setEnabled(True)
+    self.update()
 
   def create_utxo(self):
-    summary = "Send yourself {} to costruct a {} order?"  
+    summary = "Send yourself {} to costruct a trade order?".format("{:.8g}x [{}]".format(self.own_quantity, self.own_asset_name))
 
-    if self.mode == "buy":
-      summary = summary.format("{:.8g} RVN".format(self.total_price), self.mode)
-    elif self.mode == "sell":
-      summary = summary.format("{:.8g}x [{}]".format(self.quantity, self.asset_name), self.mode)
-
-    if(show_dialog("Are you sure?", "This involves sending yourself an exact amount of RVN/Assets to produce the order. This wil encur a smal transaction fee", summary, self)):
+    if(show_dialog("Are you sure?", "This involves sending yourself an exact amount of Assets to produce the order. This wil encur a smal transaction fee", summary, self)):
       #This makes sure all known swaps UTXO's are locked and won't be used when a transfer is requested
       #Could also smart-lock even-valued UTXO's but that's a whole thing...
       self.swap_storage.wallet_lock_all_swaps()
 
       try:
-        if self.mode == "buy":
-          print("Creating self RVN transaction")
-          check_unlock()
+        print("Creating self asset transaction")
+        check_unlock()
 
-          new_change_addr = do_rpc("getnewaddress")
-          self.waiting_txid = do_rpc("sendtoaddress", address=new_change_addr, amount=self.total_price)
-        elif self.mode == "sell":
-          print("Creating self asset transaction")
-          check_unlock()
+        new_change_addr = do_rpc("getnewaddress")
+        rvn_change_addr = do_rpc("getnewaddress")
+        asset_change_addr = do_rpc("getnewaddress")
+        transfer_self_txid = do_rpc("transfer", asset_name=self.own_asset_name, 
+                  to_address=new_change_addr, qty=self.own_quantity, message="",
+                  change_address=rvn_change_addr, asset_change_address=asset_change_addr)
 
-          new_change_addr = do_rpc("getnewaddress")
-          rvn_change_addr = do_rpc("getnewaddress")
-          asset_change_addr = do_rpc("getnewaddress")
-          transfer_self_txid = do_rpc("transfer", asset_name=self.asset_name, 
-                    to_address=new_change_addr, qty=self.quantity, message="",
-                    change_address=rvn_change_addr, asset_change_address=asset_change_addr)
-
-          self.waiting_txid = transfer_self_txid[0]
+        self.waiting_txid = transfer_self_txid[0]
       finally:
         #Unlock everything when done, locking causes too many problems.
         self.swap_storage.wallet_unlock_all()
@@ -166,25 +145,19 @@ class NewOrderDialog(QDialog):
       
   def update(self):
     #Read GUI
-    self.quantity = self.spinQuantity.value()
-    self.price = self.spinUnitPrice.value()
+    self.own_quantity = self.spinOwnQuantity.value()
+    self.want_quantity = self.spinWantQuantity.value()
     self.destination = self.txtDestination.text()
-    self.total_price = self.quantity * self.price
     self.valid_order = True
-    if self.mode == "buy":
-      self.asset_name = self.cmbAssets.currentText()
-      self.order_utxo = self.swap_storage.find_utxo("rvn", self.total_price, skip_locks=True, skip_rounded=False)
-      self.chkUTXOReady.setText("UTXO Ready ({:.8g} RVN)".format(self.total_price))
-      #don't have enough rvn for the order
-      if self.total_price > self.swap_storage.balance:
-        self.valid_order = False
-    else:
-      self.asset_name = self.swap_storage.my_asset_names[self.cmbAssets.currentIndex()]
-      self.order_utxo = self.swap_storage.find_utxo("asset", self.quantity, name=self.asset_name, skip_locks=True, skip_rounded=False)
-      self.chkUTXOReady.setText("UTXO Ready ({:.8g}x [{}])".format(self.quantity, self.asset_name))
-      #Don't own the asset or enough of it
-      if self.asset_name not in self.swap_storage.my_asset_names or self.quantity > self.swap_storage.assets[self.asset_name]["balance"]:
-        self.valid_order = False
+
+    self.own_asset_name = self.swap_storage.my_asset_names[self.cmbOwnAsset.currentIndex()]
+    self.want_asset_name = self.cmbWantAsset.currentText()
+    self.order_utxo = self.swap_storage.find_utxo("asset", self.own_quantity, name=self.own_asset_name, skip_locks=True, skip_rounded=False)
+    self.chkUTXOReady.setText("UTXO Ready ({:.8g}x [{}])".format(self.own_quantity, self.own_asset_name))
+    self.lblFinal.setText("Give: {:.8g}x [{}], Get: {:.8g}x [{}]".format(self.own_quantity, self.own_asset_name, self.want_quantity, self.want_asset_name))
+    #Don't own the asset or enough of it
+    if self.own_asset_name not in self.swap_storage.my_asset_names or self.own_quantity > self.swap_storage.assets[self.own_asset_name]["balance"]:
+      self.valid_order = False
 
     #Not valid while waiting on a tx to confirm or if asset hasn't been confirmed yet
     if self.waiting_txid or not self.asset_exists:
@@ -192,7 +165,6 @@ class NewOrderDialog(QDialog):
 
     #valid_order check doesn't cover UTXO existing b/c valid_order determins if we enable the UTXO button or not
     #Update GUI
-    self.lblTotalDisplay.setText("{:.8g} RVN".format(self.total_price))
     self.chkUTXOReady.setChecked(self.order_utxo is not None)
     if self.waiting_txid:
       self.btnCreateUTXO.setEnabled(False)
@@ -206,15 +178,15 @@ class NewOrderDialog(QDialog):
 
   def build_order(self):
     return SwapTransaction({
-      "in_type": self.asset_name if self.mode == "sell" else "rvn", 
-      "out_type": self.asset_name if self.mode == "buy" else "rvn",
-      "in_quantity": self.quantity if self.mode == "sell" else self.price,
-      "out_quantity": self.quantity if self.mode == "buy" else self.quantity * self.price,
+      "in_type": self.own_asset_name,
+      "out_type": self.want_asset_name,
+      "in_quantity": self.own_quantity,
+      "out_quantity": self.want_quantity,
       "own": True,
       "utxo": self.order_utxo["txid"] + "|" + str(self.order_utxo["vout"]),
       "destination": self.destination,
       "state": "new",
-      "type": self.mode,
+      "type": "trade",
       "raw": "--",
       "txid": ""
     })

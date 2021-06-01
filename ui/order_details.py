@@ -16,7 +16,7 @@ from swap_transaction import SwapTransaction
 class OrderDetailsDialog(QDialog):
   def __init__(self, swap, swap_storage, parent=None, dialog_mode="details", **kwargs):
     super().__init__(parent, **kwargs)
-    uic.loadUi("order_details.ui", self)
+    uic.loadUi("ui/qt/order_details.ui", self)
     self.swap = swap
     self.swap_storage = swap_storage
     self.dialog_mode = dialog_mode
@@ -84,7 +84,7 @@ class OrderDetailsDialog(QDialog):
       if self.swap.quantity() > self.swap_storage.assets[self.swap.asset()]["balance"]:
         return "You don't own enough of that asset."
     elif self.swap.type == "sell":
-      if self.swap.total_price() > self.swap_storage.balance:
+      if self.swap.total_price() > self.swap_storage.rvn_balance():
         return "You don't have enough RVN to purchase."
     elif self.swap.type == "trade":
       if self.swap.out_type not in self.swap_storage.my_asset_names:

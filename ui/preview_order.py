@@ -16,7 +16,7 @@ from swap_transaction import SwapTransaction
 class PreviewTransactionDialog(QDialog):
   def __init__(self, partial_swap, final_swap, swap_storage, parent=None, **kwargs):
     super().__init__(parent, **kwargs)
-    uic.loadUi("preview_order.ui", self)
+    uic.loadUi("ui/qt/preview_order.ui", self)
     self.swap = partial_swap
     self.setWindowTitle("Confirm Transaction [2/2]")
     self.txtRawFinal.setText(final_swap)

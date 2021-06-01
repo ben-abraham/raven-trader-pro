@@ -104,6 +104,12 @@ class SwapStorage:
     self.available_balance = tuple(bal_avail)
     self.total_balance = tuple(bal_total)
 
+  def rvn_balance(self):
+    return self.available_balance[0]
+
+  def asset_balance(self):
+    return self.available_balance[2]
+
 #
 # Wallet Interaction
 #

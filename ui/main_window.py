@@ -12,17 +12,18 @@ from util import *
 from rvn_rpc import *
 from config import *
 
-from preview_order import PreviewTransactionDialog
+from ui.preview_order import PreviewTransactionDialog
+from ui.order_details import OrderDetailsDialog
+from ui.new_trade import NewTradeDialog
+from ui.new_order import NewOrderDialog
+
 from swap_transaction import SwapTransaction
-from order_details import OrderDetailsDialog
 from swap_storage import SwapStorage
-from new_order import NewOrderDialog
-from new_trade import NewTradeDialog
 
 class MainWindow(QMainWindow):
   def __init__(self, storage, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    uic.loadUi("main_window.ui", self)
+    uic.loadUi("ui/qt/main_window.ui", self)
     self.setWindowTitle("Raven Trader Pro")
 
     self.swap_storage = storage

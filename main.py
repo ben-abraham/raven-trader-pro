@@ -9,12 +9,13 @@ from PyQt5 import uic
 
 import sys, getopt, argparse, json, time, getpass, os.path
 
-from preview_order import PreviewTransactionDialog
+from ui.preview_order import PreviewTransactionDialog
+from ui.order_details import OrderDetailsDialog
+from ui.new_order import NewOrderDialog
+from ui.main_window import MainWindow
+
 from swap_transaction import SwapTransaction
-from order_details import OrderDetailsDialog
 from swap_storage import SwapStorage
-from new_order import NewOrderDialog
-from main_window import MainWindow
 
 from util import *
 from rvn_rpc import *
