@@ -142,42 +142,75 @@ class QTwoLineRowWidget (QWidget):
         color: rgb(255, 0, 0);
     ''')
    
+  def update_swap(self):
+    if self.swap.own: #If this is OUR trade, the default language can be used
+      if self.swap.type == "buy":
+        self.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
+          "Buy", self.swap.quantity(), self.swap.asset(), self.swap.total_price(), self.swap.unit_price()))
+      elif self.swap.type == "sell":
+        self.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
+          "Sell", self.swap.quantity(), self.swap.asset(), self.swap.total_price(), self.swap.unit_price()))
+      elif self.swap.type == "trade":
+        self.setTextUp("{} {:.8g}x [{}] for {:.8g} [{}] ({:.8g}x [{}] each)".format(
+          "Trade", self.swap.total_price(), self.swap.in_type, self.swap.quantity(), self.swap.asset(), self.swap.unit_price(), self.swap.in_type))
+    else: #If this is someone else's trade, then we need to invert the language
+      #also all listed external orders are already executed, so past-tense
+      if self.swap.type == "buy":
+        self.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
+          "Sold", self.swap.quantity(), self.swap.asset(), self.swap.total_price(), self.swap.unit_price()))
+      elif self.swap.type == "sell":
+        self.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
+          "Bought", self.swap.quantity(), self.swap.asset(), self.swap.total_price(), self.swap.unit_price()))
+      elif self.swap.type == "trade":
+        self.setTextUp("{} {:.8g}x [{}] for {:.8g} [{}] ({:.8g}x [{}] each)".format(
+          "Exchanged", self.swap.total_price(), self.swap.in_type, self.swap.quantity(), self.swap.asset(), self.swap.unit_price(), self.swap.in_type))
+
+    if self.swap.state == "pending":
+      self.setTextDown("Pending in mempool")
+    elif self.swap.state == "completed":
+      if not self.swap.own:
+        self.setTextDown("Completed: {}".format(self.swap.txid))
+      else:
+        self.setTextDown("Executed: {}".format(self.swap.txid))
+    elif self.swap.state == "removed":
+      self.setTextDown("Removed")
+
+  def update_trade(self):
+    if self.trade.type == "buy":
+      self.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
+        "Buy", self.trade.out_quantity, self.trade.out_type, self.trade.in_quantity, self.trade.in_quantity / self.trade.out_quantity))
+    elif self.trade.type == "sell":
+      self.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
+        "Sell", self.trade.in_quantity, self.trade.in_type, self.trade.out_quantity, self.trade.out_quantity / self.trade.in_quantity))
+    elif self.trade.type == "trade":
+      self.setTextUp("{} {:.8g}x [{}] for {:.8g} [{}] ({:.8g}x [{}] each)".format(
+        "Trade", self.trade.in_quantity, self.trade.in_type, self.trade.out_quantity, self.trade.out_type, self.trade.in_quantity / self.trade.out_quantity, self.trade.in_type))
+    
+    self.setTextDown("{}/{}".format(self.trade.order_count, self.trade.order_count + self.trade.executed_count))
+
+  def update_asset(self):
+
+    self.setTextUp("[{}] {:.8g}".format(self.asset_data["name"], self.asset_data["balance"]))
 
   @staticmethod
   def from_swap(swap, **kwargs):
     row = QTwoLineRowWidget()
     row.swap = swap
-    if swap.own: #If this is OUR trade, the default language can be used
-      if swap.type == "buy":
-        row.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
-          "Buy", swap.quantity(), swap.asset(), swap.total_price(), swap.unit_price()))
-      elif swap.type == "sell":
-        row.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
-          "Sell", swap.quantity(), swap.asset(), swap.total_price(), swap.unit_price()))
-      elif swap.type == "trade":
-        row.setTextUp("{} {:.8g}x [{}] for {:.8g} [{}] ({:.8g}x [{}] each)".format(
-          "Trade", swap.total_price(), swap.in_type, swap.quantity(), swap.asset(), swap.unit_price(), swap.in_type))
-    else: #If this is someone else's trade, then we need to invert the language
-      #also all listed external orders are already executed, so past-tense
-      if swap.type == "buy":
-        row.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
-          "Sold", swap.quantity(), swap.asset(), swap.total_price(), swap.unit_price()))
-      elif swap.type == "sell":
-        row.setTextUp("{} {:.8g}x [{}] for {:.8g} RVN ({:.8g} each)".format(
-          "Bought", swap.quantity(), swap.asset(), swap.total_price(), swap.unit_price()))
-      elif swap.type == "trade":
-        row.setTextUp("{} {:.8g}x [{}] for {:.8g} [{}] ({:.8g}x [{}] each)".format(
-          "Exchanged", swap.total_price(), swap.in_type, swap.quantity(), swap.asset(), swap.unit_price(), swap.in_type))
+    row.update_swap()
+    return row
 
-    if swap.state == "pending":
-      row.setTextDown("Pending in mempool")
-    elif swap.state == "completed":
-      if not swap.own:
-        row.setTextDown("Completed: {}".format(swap.txid))
-      else:
-        row.setTextDown("Executed: {}".format(swap.txid))
-    elif swap.state == "removed":
-      row.setTextDown("Removed")
+  @staticmethod
+  def from_trade(trade, **kwargs):
+    row = QTwoLineRowWidget()
+    row.trade = trade
+    row.update_trade()
+    return row
+
+  @staticmethod
+  def from_asset(asset_data):
+    row = QTwoLineRowWidget()
+    row.asset_data = asset_data
+    row.update_asset()
     return row
 
   @staticmethod
@@ -200,20 +233,18 @@ class QTwoLineRowWidget (QWidget):
 
     return row
 
-  @staticmethod
-  def from_asset(asset_data):
-    row = QTwoLineRowWidget()
-    row.asset_data = asset_data
+  def get_data(self):
+    for data_prop in ["swap", "trade", "asset_data"]:
+      if hasattr(self, data_prop):
+        return getattr(self, data_prop)
 
-    row.setTextUp("[{}] {:.8g}".format(asset_data["name"], asset_data["balance"]))
-
-    return row
-
-  def getSwap (self):
-    return self.swap
-
-  def getAsset(self):
-    return self.asset_data
+  def refresh(self):
+    if hasattr(self, "swap"):
+      self.update_swap()
+    elif hasattr(self, "trade"):
+      self.update_trade()
+    if hasattr(self, "asset_data"):
+      self.update_asset()
 
   def setTextUp (self, text):
     self.textUpQLabel.setText(text)

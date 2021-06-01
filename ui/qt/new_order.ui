@@ -84,6 +84,7 @@
      </property>
     </widget>
    </item>
+
    <item row="5" column="0">
     <widget class="QLabel" name="label_4">
      <property name="text">
@@ -98,46 +99,15 @@
      </property>
     </widget>
    </item>
+
    <item row="6" column="0">
-    <widget class="QLabel" name="lblWhatUTXO">
-      <property name="font">
-        <font>
-        <underline>true</underline>
-        </font>
-      </property>
-     <property name="cursor">
-      <cursorShape>WhatsThisCursor</cursorShape>
-     </property>
-     <property name="text">
-      <string>What is this?</string>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="1">
-    <widget class="QCheckBox" name="chkUTXOReady">
-     <property name="enabled">
-      <bool>false</bool>
-     </property>
-     <property name="text">
-      <string>UTXO Ready</string>
-     </property>
-    </widget>
-   </item>
-   <item row="7" column="1">
-    <widget class="QPushButton" name="btnCreateUTXO">
-     <property name="text">
-      <string>Create Order UTXO</string>
-     </property>
-    </widget>
-   </item>
-   <item row="8" column="0">
     <widget class="QLabel" name="label_5">
      <property name="text">
       <string>Destination</string>
      </property>
     </widget>
    </item>
-   <item row="8" column="1">
+   <item row="6" column="1">
     <widget class="QLineEdit" name="txtDestination">
      <property name="text">
       <string/>
@@ -147,6 +117,43 @@
      </property>
     </widget>
    </item>
+   
+   <item row="7" column="0">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Order Count</string>
+     </property>
+    </widget>
+   </item>
+   <item row="7" column="1">
+    <widget class="QSpinBox" name="spinOrderCount">
+     <property name="value">
+      <number>1</number>
+     </property>
+     <property name="minimum">
+      <double>1</double>
+     </property>
+     <property name="maximum">
+      <double>100</double>
+     </property>
+    </widget>
+   </item>
+   
+   <item row="8" column="0">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Final</string>
+     </property>
+    </widget>
+   </item>
+   <item row="8" column="1">
+    <widget class="QLabel" name="lblFinal">
+     <property name="text">
+      <string></string>
+     </property>
+    </widget>
+   </item>
+
    <item row="9" column="1">
     <widget class="QDialogButtonBox" name="btnDialogButtons">
      <property name="orientation">

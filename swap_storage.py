@@ -13,6 +13,7 @@ from rvn_rpc import *
 from config import *
 
 from swap_transaction import SwapTransaction
+from swap_trade import SwapTrade
 
 class SwapStorage:
   def __init__ (self):
@@ -40,7 +41,7 @@ class SwapStorage:
     fSwap = open(SWAP_STORAGE_PATH, mode="r")
     swapJson = fSwap.read()
     fSwap.close()
-    self.swaps = json.loads(swapJson, object_hook=SwapTransaction)
+    self.swaps = json.loads(swapJson, object_hook=SwapTrade)
     print("Loaded {} swaps from disk".format(len(self.swaps)))
     return self.swaps
 
@@ -72,12 +73,12 @@ class SwapStorage:
 
   def add_swap(self, swap):
     self.swaps.append(swap)
-    utxo_parts = swap.utxo.split("|")
-    self.add_lock(utxo_parts[0], int(utxo_parts[1]))
+    #utxo_parts = swap.utxo.split("|")
+    #self.add_lock(utxo_parts[0], int(utxo_parts[1]))
 
   def remove_swap(self, swap):
-    utxo_parts = swap.utxo.split("|")
-    self.remove_lock(utxo_parts[0], int(utxo_parts[1]))
+    #utxo_parts = swap.utxo.split("|")
+    #self.remove_lock(utxo_parts[0], int(utxo_parts[1]))
     self.swaps.remove(swap)
 
 #
@@ -219,8 +220,8 @@ class SwapStorage:
   def refresh_locks(self):
     self.locks = []
     for swap in self.swaps:
-      if swap.state in ["new", "pending"]:
-        self.add_lock(utxo=swap.utxo)
+      for utxo in swap.order_utxos:
+        self.add_lock(utxo=utxo)
 
   def lock_quantity(self, type):
     if type == "rvn":
@@ -256,6 +257,14 @@ class SwapStorage:
           if(float(asset_utxo["amount"]) == float(quantity) and exact) or (asset_utxo["amount"] >= quantity and not exact):
             return asset_utxo
     return None
+
+  def find_utxo_multiple_exact(self, type, quantity, name=None):
+    if type == "rvn":
+      return [utxo for utxo in self.utxos if utxo["amount"] == quantity]
+    elif type == "asset":
+      return [utxo for utxo in self.assets[name]["outpoints"] if utxo["amount"] == quantity]
+    else: #Use the type name itself
+      return [utxo for utxo in self.assets[type]["outpoints"] if utxo["amount"] == quantity]
 
   def find_utxo_set(self, type, quantity, mode="combine", name=None, skip_locks=False):
     found_set = None
