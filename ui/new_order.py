@@ -118,6 +118,6 @@ class NewOrderDialog(QDialog):
 
   def build_trade(self):
     if self.mode == "buy":
-      return SwapTrade.create_trade("buy", "rvn", self.price, self.asset_name, self.quantity, 1, self.destination)
+      return SwapTrade.create_trade("buy", "rvn", self.price, self.asset_name, self.quantity, self.order_count, self.destination)
     elif self.mode == "sell":
       return SwapTrade.create_trade("sell", self.asset_name, self.quantity, "rvn", self.quantity  * self.price, self.order_count, self.destination)

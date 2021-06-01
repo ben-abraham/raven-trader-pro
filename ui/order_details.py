@@ -24,7 +24,7 @@ class OrderDetailsDialog(QDialog):
     if self.dialog_mode == "details":
       self.setWindowTitle("Order Details")
       self.update_for_swap(self.swap)
-      self.txtSigned.setText(self.swap.raw)
+      #self.txtSigned.setText(self.swap.raw)
       self.buttonBox.removeButton(self.buttonBox.button(QDialogButtonBox.Cancel))
     elif self.dialog_mode == "complete":
       self.setWindowTitle("Preview Completion [1/2]")
@@ -41,7 +41,7 @@ class OrderDetailsDialog(QDialog):
 
   def update_for_swap(self, swap):
     self.lblMine.setText("Yes" if swap.own else "No")
-    self.lblStatus.setText(swap.state)
+    #self.lblStatus.setText(swap.state)
     self.lblAsset.setText(swap.asset())
     
     if swap.type == "buy":

@@ -63,8 +63,8 @@ class SwapTransaction():
 
   #This is run by Alice when she wants to create an order
   def sign_partial(self):
-    utxo_parts = self.utxo.split("|")
-    vin = {"txid":utxo_parts[0], "vout":int(utxo_parts[1]), "sequence":0}
+    (txid, vout) = split_utxo(self.utxo)
+    vin = {"txid":txid, "vout":vout, "sequence":0}
     if self.type == "buy":
       vout = {self.destination: make_transfer(self.out_type, self.out_quantity)}
     elif self.type == "sell":

@@ -25,6 +25,7 @@ class SwapStorage:
     self.load_locked()
     self.load_swaps()
     self.update_wallet()
+    self.wallet_unlock_all()
     self.refresh_locks()
 
   def on_close(self):
@@ -73,12 +74,8 @@ class SwapStorage:
 
   def add_swap(self, swap):
     self.swaps.append(swap)
-    #utxo_parts = swap.utxo.split("|")
-    #self.add_lock(utxo_parts[0], int(utxo_parts[1]))
 
   def remove_swap(self, swap):
-    #utxo_parts = swap.utxo.split("|")
-    #self.remove_lock(utxo_parts[0], int(utxo_parts[1]))
     self.swaps.remove(swap)
 
 #
@@ -143,15 +140,13 @@ class SwapStorage:
   def wallet_lock_utxos(self, utxos=[], lock = True):
     txs = []
     for utxo in utxos:
-      (txid, vout) = utxo.split("|")
-      vout = int(vout)
+      (txid, vout) = split_utxo(utxo)
       txs.append({"txid":txid,"vout":vout})
     do_rpc("lockunspent", unlock=not lock, transactions=txs)
 
   def wallet_lock_single(self, txid=None, vout=None, utxo=None, lock = True):
     if utxo != None and txid == None and vout == None:
-      (txid, vout) = utxo.split("|")
-      vout = int(vout)
+      (txid, vout) = split_utxo(utxo)
     do_rpc("lockunspent", unlock=not lock, transactions=[{"txid":txid,"vout":vout}])
 
   def load_wallet_locked(self):
@@ -193,8 +188,7 @@ class SwapStorage:
 
   def add_lock(self, txid=None, vout=None, utxo=None):
     if utxo != None and txid == None and vout == None:
-      (txid, vout) = utxo.split("|")
-      vout = int(vout)
+      (txid, vout) = split_utxo(utxo)
     for lock in self.locks:
       if txid == lock["txid"] and vout == lock["vout"]:
         return #Already added
@@ -207,8 +201,7 @@ class SwapStorage:
 
   def remove_lock(self, txid=None, vout=None, utxo=None):
     if utxo != None and txid == None and vout == None:
-      (txid, vout) = utxo.split("|")
-      vout = int(vout)
+      (txid, vout) = split_utxo(utxo)
     for lock in self.locks:
       if txid == lock["txid"] and vout == lock["vout"]:
         self.locks.remove(lock)
@@ -325,17 +318,17 @@ class SwapStorage:
     if check_cache:
       return self.search_utxo(utxo) == None #This will always go away immediately w/ mempool. so in_mempool doesnt work here
     else:
-      utxo_parts = utxo.split("|")
-      return do_rpc("gettxout", txid=utxo_parts[0], n=int(utxo_parts[1]), include_mempool=in_mempool) == None
+      (txid, vout) = split_utxo(utxo)
+      return do_rpc("gettxout", txid=txid, n=vout, include_mempool=in_mempool) == None
 
   def search_utxo(self, utxo):
-    utxo_parts = utxo.split("|")
+    (txid, vout) = split_utxo(utxo)
     for utxo in self.utxos:
-      if utxo["txid"] == utxo_parts[0] and utxo["vout"] == int(utxo_parts[1]):
+      if utxo["txid"] == txid and utxo["vout"] == vout:
         return {"type": "rvn", "utxo": utxo}
     for asset_name in self.my_asset_names:
       for a_utxo in self.assets[asset_name]["outpoints"]:
-        if a_utxo["txid"] == utxo_parts[0] and a_utxo["vout"] == int(utxo_parts[1]):
+        if a_utxo["txid"] == txid and a_utxo["vout"] == vout:
           return {"type": "asset", "utxo": a_utxo, "name": asset_name}
     return None
 
@@ -346,6 +339,6 @@ class SwapStorage:
           return True
     for swap in self.swaps:
       expected = "{}|{}".format(utxo["txid"], utxo["vout"])
-      if swap.utxo == expected:
+      if expected in swap.order_utxos:
         return True
     return False

@@ -33,8 +33,8 @@ class MainWindow(QMainWindow):
     self.btnNewTradeOrder.clicked.connect(self.new_trade_order)
     self.btnCompleteOrder.clicked.connect(self.complete_order)
 
-    self.lstBuyOrders.itemDoubleClicked.connect(self.view_trade_details)
-    self.lstSellOrders.itemDoubleClicked.connect(self.view_trade_details)
+    self.lstBuyOrders.itemDoubleClicked.connect(self.view_order_details)
+    self.lstSellOrders.itemDoubleClicked.connect(self.view_order_details)
     self.lstTradeOrders.itemDoubleClicked.connect(self.view_order_details)
     self.lstPastOrders.itemDoubleClicked.connect(self.view_order_details)
     self.lstCompletedOrders.itemDoubleClicked.connect(self.view_order_details)
@@ -111,6 +111,16 @@ class MainWindow(QMainWindow):
       self.swap_storage.remove_swap(swap)
       self.swap_storage.save_swaps()
       self.update_lists()
+  
+  def open_trade_menu(self, list, list_item, click_position, trade):
+    menu = QMenu()
+    widget_inner = list.itemWidget(list_item)
+    setupTradesAction = menu.addAction("Setup Trade") if trade.missing_trades() > 0 else None
+    action = menu.exec_(widget_inner.mapToGlobal(click_position))
+    if action == None:
+      return
+    elif action == setupTradesAction:
+      self.setup_trades(trade)
 
   def open_asset_menu(self, list, list_item, click_position, asset):
     menu = QMenu()
@@ -127,47 +137,41 @@ class MainWindow(QMainWindow):
     buy_dialog = NewOrderDialog("buy", self.swap_storage, prefill=prefill, parent=self)
     if(buy_dialog.exec_()):
       buy_swap = buy_dialog.build_trade()
-      if not buy_swap.destination:
-        buy_swap.destination = do_rpc("getnewaddress")
-
-      #buy_swap.sign_partial()
-      print("New Buy: ", json.dumps(buy_swap.__dict__))
-      self.swap_storage.add_swap(buy_swap)
-      self.swap_storage.save_swaps()
-      self.update_lists()
-      details = OrderDetailsDialog(buy_swap, self.swap_storage, parent=self, dialog_mode="details")
-      details.exec_()
+      self.created_order(buy_swap)
 
   def new_sell_order(self, prefill=None):
     sell_dialog = NewOrderDialog("sell", self.swap_storage, prefill=prefill, parent=self)
     if(sell_dialog.exec_()):
       sell_swap = sell_dialog.build_trade()
-      if not sell_swap.destination:
-        sell_swap.destination = do_rpc("getnewaddress")
-
-      #sell_swap.sign_partial()
-      print("New Sell: ", json.dumps(sell_swap.__dict__))
-      self.swap_storage.add_swap(sell_swap)
-      self.swap_storage.save_swaps()
-      self.update_lists()
-      details = OrderDetailsDialog(sell_swap, self.swap_storage, parent=self, dialog_mode="details")
-      details.exec_()
+      self.created_order(sell_swap)
 
   def new_trade_order(self, prefill_swap=None):
     prefill = None
     trade_dialog = NewTradeDialog(self.swap_storage, prefill=prefill, parent=self)
     if(trade_dialog.exec_()):
       trade_swap = trade_dialog.build_trade()
-      if not trade_swap.destination:
-        trade_swap.destination = do_rpc("getnewaddress")
+      self.created_order(trade_swap)
 
-      #trade_swap.sign_partial()
-      print("New Trade: ", json.dumps(trade_swap.__dict__))
-      self.swap_storage.add_swap(trade_swap)
-      self.swap_storage.save_swaps()
-      self.update_lists()
-      details = OrderDetailsDialog(trade_swap, self.swap_storage, parent=self, dialog_mode="details")
-      details.exec_()
+  def setup_trades(self, trade):
+    filled = trade.attempt_fill_trade_pool(self.swap_storage)
+    if not filled:
+      setup_all = show_prompt("Setup All Trades?", "Would you like to setup all trades right now? If not, you can continue to make them one-by-one.")
+      setup_trade = trade.setup_trade(self.swap_storage, max_add=None if setup_all else 1)
+      if setup_trade:
+        setup_txid = self.preview_complete(setup_trade)
+        if setup_txid:
+          print("Sent - ", setup_txid)
+          #Wait for confirmation, then run this again. 
+    else: #Pool has been filled
+      self.mainWindowUpdate()
+
+
+  def created_order(self, trade):
+    print("New {}: {}".format(trade.type, json.dumps(trade.__dict__)))
+    self.swap_storage.add_swap(trade)
+    self.swap_storage.save_swaps()
+    self.update_lists()
+    self.setup_trades(trade)
 
   def complete_order(self):
     order_dialog = OrderDetailsDialog(None, self.swap_storage, parent=self, dialog_mode="complete")
@@ -176,27 +180,22 @@ class MainWindow(QMainWindow):
       finished_swap = partial_swap.complete_order(self.swap_storage)
       if finished_swap:
         print("Swap: ", json.dumps(partial_swap.__dict__))
-        
-        preview_dialog = PreviewTransactionDialog(partial_swap, finished_swap, self.swap_storage, parent=self)
-
-        if(preview_dialog.exec_()):
-          print("Transaction Approved. Sending!")
-          submitted_txid = do_rpc("sendrawtransaction", hexstring=finished_swap)
-          partial_swap.txid = submitted_txid
+        sent_txid = self.preview_complete()
+        if sent_txid:
+          partial_swap.txid = sent_txid
           partial_swap.state = "completed" #TODO: Add waiting on confirmation phase
           #Add a completed swap to the list.
           #it's internally tracked from an external source
           self.swap_storage.add_swap(partial_swap)
           self.update_lists()
-        else:
-          print("Transaction Rejected")
-
-  def view_trade_details(self, widget):
-    list = widget.listWidget()
-    swap_row = list.itemWidget(widget)
-    print(swap_row.get_data())
-    #details = OrderDetailsDialog(swap_row.get_data(), self.swap_storage, parent=self, dialog_mode="details")
-    #return details.exec_()
+        
+  def preview_complete(self, raw_tx, swap=None):
+    preview_dialog = PreviewTransactionDialog(swap, raw_tx, self.swap_storage, parent=self)
+    if preview_dialog.exec_():
+      print("Transaction Approved. Sending!")
+      submitted_txid = do_rpc("sendrawtransaction", hexstring=raw_tx)
+      return submitted_txid
+    return None
 
   def view_order_details(self, widget):
     list = widget.listWidget()
@@ -264,17 +263,20 @@ class MainWindow(QMainWindow):
     self.add_udpate_items(list, swap_list, lambda x: x.utxo, QTwoLineRowWidget.from_swap, self.open_swap_menu)
 
   def add_update_trade_items(self, list, swap_list):
-    self.add_udpate_items(list, swap_list, lambda x: x.in_type, QTwoLineRowWidget.from_trade, self.open_swap_menu)
+    self.add_udpate_items(list, swap_list, \
+      lambda x: "{}{}{}{}".format(x.in_quantity,x.in_type,x.out_quantity,x.out_type)\
+      , QTwoLineRowWidget.from_trade, self.open_trade_menu)
 
   def add_udpate_items(self, list_widget, item_list, fn_key_selector, fn_row_factory, fn_context_menu):
     existing_rows = {}
     seen_keys = []
     for idx in range(0, list_widget.count()):
       row = list_widget.item(idx)
-      row_data = list_widget.itemWidget(row).get_data()
+      row_widget = list_widget.itemWidget(row)
+      row_data = row_widget.get_data()
       row_key = fn_key_selector(row_data)
       existing_rows[row_key] = row
-      list_widget.itemWidget(row).update() #Trigger update function
+      row_widget.refresh() #Trigger update function
     existing_keys = [*existing_rows.keys()]
     for current_item in item_list:
       item_key = fn_key_selector(current_item)

@@ -21,6 +21,17 @@ def calculate_fee(transaction_hex):
   #print("{} bytes => {} RVN".format(num_kb * 1024, fee))
   return fee
 
+def calculated_fee_from_size(size):
+  return 0.0125 * (size / 1024)
+
+#TransactionOverhead         = 12             // 4 version, 2 segwit flag, 1 vin, 1 vout, 4 lock time
+#InputSize                   = 148            // 4 prev index, 32 prev hash, 4 sequence, 1 script size, ~107 script witness
+#OutputOverhead              = 9              // 8 value, 1 script size
+#P2PKHScriptPubkeySize       = 25             // P2PKH size
+#P2PKHReplayScriptPubkeySize = 63             // P2PKH size with replay protection
+def calculate_size(vins, vouts):
+  return 12 + (len(vins) * 148) + (len(vouts) * (9 + 25))
+
 def fund_asset_transaction_raw(swap_storage, fn_rpc, asset_name, quantity, vins, vouts):
   #Search for enough asset UTXOs
   (asset_utxo_total, asset_utxo_set) = swap_storage.find_utxo_set("asset", quantity, name=asset_name, skip_locks=True)
@@ -74,6 +85,22 @@ def fund_transaction_final(swap_storage, fn_rpc, send_rvn, recv_rvn, target_addr
   print("Funding result: Send: {:.8g} Recv: {:.8g} Fee: {:.8g} Change: {:.8g}".format(send_rvn, recv_rvn, fee_rvn, out_rvn))
 
   return True
+
+def join_utxo(txid, n):
+  return "{}-{}".format(txid, n)
+  
+def make_utxo(order):
+  return "{}-{}".format(order["txid"], order["vout"])
+
+def split_utxo(utxo):
+  (txid, n) = utxo.split("-")
+  return (txid, int(n))
+
+def utxo_copy(vin):
+  if "sequence" in vin:
+    return { "txid": vin["txid"], "vout": int(vin["vout"]), "sequence": int(vin["sequence"]) }
+  else:
+    return { "txid": vin["txid"], "vout": int(vin["vout"]) }
 
 def vout_to_utxo(vout, txid, n):
   if "scriptPubKey" in vout:
@@ -186,7 +213,7 @@ class QTwoLineRowWidget (QWidget):
       self.setTextUp("{} {:.8g}x [{}] for {:.8g} [{}] ({:.8g}x [{}] each)".format(
         "Trade", self.trade.in_quantity, self.trade.in_type, self.trade.out_quantity, self.trade.out_type, self.trade.in_quantity / self.trade.out_quantity, self.trade.in_type))
     
-    self.setTextDown("{}/{}".format(self.trade.order_count, self.trade.order_count + self.trade.executed_count))
+    self.setTextDown("{}/{}".format(len(self.trade.order_utxos), self.trade.order_count + self.trade.executed_count))
 
   def update_asset(self):
 
