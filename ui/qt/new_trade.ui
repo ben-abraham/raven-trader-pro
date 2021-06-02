@@ -7,14 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>300</height>
+    <height>320</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
   <layout class="QFormLayout" name="formLayout">
-   
    <item row="1" column="0">
     <widget class="QLabel" name="label">
      <property name="text">
@@ -29,7 +28,6 @@
      </property>
     </widget>
    </item>
-
    <item row="2" column="0">
     <widget class="QLabel" name="label_2">
      <property name="text">
@@ -42,15 +40,17 @@
      <property name="decimals">
       <number>8</number>
      </property>
-     <property name="value">
-      <number>1</number>
-     </property>
      <property name="minimum">
-      <double>0.00000001</double>
+      <double>0.000000010000000</double>
+     </property>
+     <property name="maximum">
+      <double>21000000000.000000000000000</double>
+     </property>
+     <property name="value">
+      <double>1.000000000000000</double>
      </property>
     </widget>
    </item>
-   
    <item row="3" column="0">
     <widget class="QLabel" name="label">
      <property name="text">
@@ -65,7 +65,6 @@
      </property>
     </widget>
    </item>
-   
    <item row="4" column="1">
     <widget class="QPushButton" name="btnCheckAvailable">
      <property name="text">
@@ -73,7 +72,6 @@
      </property>
     </widget>
    </item>
-   
    <item row="5" column="0">
     <widget class="QLabel" name="label_2">
      <property name="text">
@@ -86,15 +84,17 @@
      <property name="decimals">
       <number>8</number>
      </property>
-     <property name="value">
-      <number>1</number>
-     </property>
      <property name="minimum">
-      <double>0.00000001</double>
+      <double>0.000000010000000</double>
+     </property>
+     <property name="maximum">
+      <double>21000000000.000000000000000</double>
+     </property>
+     <property name="value">
+      <double>1.000000000000000</double>
      </property>
     </widget>
    </item>
-
    <item row="6" column="0">
     <widget class="QLabel" name="label_5">
      <property name="text">
@@ -112,7 +112,6 @@
      </property>
     </widget>
    </item>
-   
    <item row="7" column="0">
     <widget class="QLabel" name="label_2">
      <property name="text">
@@ -122,18 +121,17 @@
    </item>
    <item row="7" column="1">
     <widget class="QSpinBox" name="spinOrderCount">
+     <property name="minimum">
+      <number>1</number>
+     </property>
+     <property name="maximum">
+      <number>100</number>
+     </property>
      <property name="value">
       <number>1</number>
      </property>
-     <property name="minimum">
-      <double>1</double>
-     </property>
-     <property name="maximum">
-      <double>100</double>
-     </property>
     </widget>
    </item>
-
    <item row="8" column="0">
     <widget class="QLabel" name="label_4">
      <property name="text">
@@ -144,11 +142,10 @@
    <item row="8" column="1">
     <widget class="QLabel" name="lblSummary">
      <property name="text">
-      <string></string>
+      <string/>
      </property>
     </widget>
    </item>
-   
    <item row="9" column="0">
     <widget class="QLabel" name="label_2">
      <property name="text">
@@ -159,11 +156,10 @@
    <item row="9" column="1">
     <widget class="QLabel" name="lblFinal">
      <property name="text">
-      <string></string>
+      <string/>
      </property>
     </widget>
    </item>
-
    <item row="10" column="1">
     <widget class="QDialogButtonBox" name="btnDialogButtons">
      <property name="orientation">
