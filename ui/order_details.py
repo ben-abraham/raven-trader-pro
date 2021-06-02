@@ -30,10 +30,11 @@ class OrderDetailsDialog(QDialog):
       self.buttonBox.removeButton(self.buttonBox.button(QDialogButtonBox.Cancel))
     elif self.dialog_mode == "multiple":
       self.trade = self.swap
-      self.trade_number_changed(0)
-      self.spnOrderNumber.valueChanged.connect(self.trade_number_changed)
       self.spnOrderNumber.setEnabled(True)
-      self.spnOrderNumber.setMaximum(len(self.trade.order_utxos) - 1)
+      self.spnOrderNumber.setMinimum(1)
+      self.spnOrderNumber.setMaximum(len(self.trade.order_utxos))
+      self.trade_number_changed(1)
+      self.spnOrderNumber.valueChanged.connect(self.trade_number_changed)
       self.buttonBox.removeButton(self.buttonBox.button(QDialogButtonBox.Cancel))
     elif self.dialog_mode == "complete":
       self.setWindowTitle("Preview Completion [1/2]")
@@ -49,7 +50,7 @@ class OrderDetailsDialog(QDialog):
       self.update_for_swap(self.swap)
 
   def trade_number_changed(self, swap_index):
-    self.current_number = swap_index
+    self.current_number = swap_index - 1
     new_swap = self.trade.transactions[self.current_number]
     self.swap = new_swap
     self.setWindowTitle("Order Details [{}/{}]".format(self.current_number + 1, len(self.trade.order_utxos))) #SwapTrade
