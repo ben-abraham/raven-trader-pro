@@ -171,6 +171,8 @@ class MainWindow(QMainWindow):
           else:
             return (False, "Invalid Trade")
         except Exception as e:
+          print(e)
+          raise e
           return (False, "Trade Error: {}".format(e))
       else:
         return (False, None)

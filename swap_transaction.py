@@ -95,6 +95,8 @@ class SwapTransaction():
     elif self_utxo["type"] == "asset": #Sell order means we need to invalide asset utxo
       lock_vout = { out_addr: make_transfer(self_utxo["name"], self.in_quantity) }
 
+    check_unlock()
+
     new_tx = do_rpc("createrawtransaction", inputs=lock_vin, outputs=lock_vout)
     funded_tx = do_rpc("fundrawtransaction", hexstring=new_tx, options={"changePosition": 1})
     signed_raw = do_rpc("signrawtransaction", hexstring=funded_tx["hex"])

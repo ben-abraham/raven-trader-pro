@@ -100,9 +100,15 @@ class SwapTrade():
     #TODO: MANY better ways to handle this.....
     #But for now I want to encourage address reuse especially with bulk trades
     addr_list = [addr["address"] for addr in do_rpc("listreceivedbyaddress")]
+    #addr_list = do_rpc("getaddressesbyaccount", account="")
 
-    if num_create > len(addr_list) + 2: #2 extra addrs for asset +  rvn change
-      raise Exception("Not enough addresses")
+    #how many more addrs to generate, 2 extra addrs for asset + rvn change
+    extra_addr = (num_create + 2) - len(addr_list) 
+
+    if extra_addr > 0:
+      print("Generating {} new reciving addresses".format(extra_addr))
+      for i in range(0, extra_addr):
+        addr_list.append(do_rpc("getnewaddress"))
 
     setup_vins = []
     setup_vouts = {}
@@ -133,6 +139,8 @@ class SwapTrade():
     estimated_fee = calculated_fee_from_size(estimated_size)
 
     raw_tx = do_rpc("createrawtransaction", inputs=setup_vins, outputs=setup_vouts)
+
+    check_unlock()
 
     if self.type == "buy":
       funded_tx = fund_transaction_final(swap_storage, do_rpc, quantity_required, 0, \

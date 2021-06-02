@@ -175,7 +175,8 @@ class SwapStorage:
             self.utxos.append(utxo)
           elif utxo["type"] == "asset":
             if utxo["asset"] not in self.assets:
-              self.assets[utxo["asset"]] = []
+              self.assets[utxo["asset"]] = {"balance": 0, "outpoints":[]}
+            self.assets[utxo["asset"]]["balance"] += utxo["amount"]
             self.assets[utxo["asset"]]["outpoints"].append(utxo)
 
   def wallet_unlock_all(self):
