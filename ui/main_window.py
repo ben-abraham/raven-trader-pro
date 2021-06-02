@@ -34,8 +34,6 @@ class MainWindow(QMainWindow):
     self.btnCompleteOrder.clicked.connect(self.complete_order)
 
     self.lstAllOrders.itemDoubleClicked.connect(self.view_order_details)
-    #self.lstSellOrders.itemDoubleClicked.connect(self.view_order_details)
-    #self.lstTradeOrders.itemDoubleClicked.connect(self.view_order_details)
     self.lstPastOrders.itemDoubleClicked.connect(self.view_order_details)
     self.lstCompletedOrders.itemDoubleClicked.connect(self.view_order_details)
 
@@ -92,7 +90,7 @@ class MainWindow(QMainWindow):
         print("Hard Remove Trade Order")
           
         setup_utxo = swap.consutrct_invalidate_tx(self.swap_storage)
-        preview_dialog = PreviewTransactionDialog(swap, setup_utxo["hex"], self.swap_storage, parent=self)
+        preview_dialog = PreviewTransactionDialog(swap, setup_utxo["hex"], self.swap_storage, preview_title="Invalidate Order", parent=self)
         if preview_dialog.exec_():
           print("Send Invalidate!")
           sent_txid = do_rpc("sendrawtransaction", hexstring=setup_utxo["hex"])
@@ -116,9 +114,12 @@ class MainWindow(QMainWindow):
     menu = QMenu()
     widget_inner = list.itemWidget(list_item)
     setupTradesAction = menu.addAction("Setup Trade") if trade.missing_trades() > 0 else None
+    tradeDetailsAction = menu.addAction("Trade Details") if len(trade.order_utxos) > 0 else None
     action = menu.exec_(widget_inner.mapToGlobal(click_position))
     if action == None:
       return
+    elif action == tradeDetailsAction:
+      self.view_order_details(None,trade)
     elif action == setupTradesAction:
       self.setup_trades(trade)
 
@@ -152,18 +153,29 @@ class MainWindow(QMainWindow):
       trade_swap = trade_dialog.build_trade()
       self.created_order(trade_swap)
 
-  def setup_trades(self, trade):
+  def setup_trades(self, trade, force_create):
     filled = trade.attempt_fill_trade_pool(self.swap_storage)
-    if not filled:
-      setup_all = show_prompt("Setup All Trades?", "Would you like to setup all trades right now? If not, you can continue to make them one-by-one.")
-      setup_trade = trade.setup_trade(self.swap_storage, max_add=None if setup_all else 1)
-      if setup_trade:
-        setup_txid = self.preview_complete(setup_trade)
-        if setup_txid:
-          print("Sent - ", setup_txid)
-          #Wait for confirmation, then run this again. 
+    if not filled and force_create:
+      setup_all = QMessageBox.Yes if trade.missing_trades() == 1 else\
+        show_prompt_3("Setup All Trades?", "Would you like to setup all trades right now? If not, you can continue to make them one-by-one.")
+      if setup_all != QMessageBox.Cancel:
+        try:
+          setup_trade = trade.setup_trade(self.swap_storage, max_add=None if setup_all == QMessageBox.Yes else 1)
+          if setup_trade:
+            setup_txid = self.preview_complete(setup_trade, "Setup Trade Order")
+            if setup_txid:
+              return (True, setup_txid)
+              #Wait for confirmation, then run this again.
+            else:
+              return (False, "Transaction Error: {}".format(setup_txid))
+          else:
+            return (False, "Invalid Trade")
+        except Exception as e:
+          return (False, "Trade Error: {}".format(e))
+      else:
+        return (False, None)
     else: #Pool has been filled
-      self.mainWindowUpdate()
+      return (True, None)
 
 
   def created_order(self, trade):
@@ -171,7 +183,7 @@ class MainWindow(QMainWindow):
     self.swap_storage.add_swap(trade)
     self.swap_storage.save_swaps()
     self.update_lists()
-    self.setup_trades(trade)
+    self.view_order_details(None, swap=trade)
 
   def complete_order(self):
     order_dialog = OrderDetailsDialog(None, self.swap_storage, parent=self, dialog_mode="complete")
@@ -180,28 +192,38 @@ class MainWindow(QMainWindow):
       finished_swap = partial_swap.complete_order(self.swap_storage)
       if finished_swap:
         print("Swap: ", json.dumps(partial_swap.__dict__))
-        sent_txid = self.preview_complete()
+        sent_txid = self.preview_complete(finished_swap, "Confirm Transaction [2/2]")
         if sent_txid:
           partial_swap.txid = sent_txid
           partial_swap.state = "completed" #TODO: Add waiting on confirmation phase
           #Add a completed swap to the list.
           #it's internally tracked from an external source
-          self.swap_storage.add_swap(partial_swap)
+          self.swap_storage.add_completed(partial_swap)
           self.update_lists()
-        
-  def preview_complete(self, raw_tx, swap=None):
-    preview_dialog = PreviewTransactionDialog(swap, raw_tx, self.swap_storage, parent=self)
+  
+  def preview_complete(self, raw_tx, message, swap=None):
+    preview_dialog = PreviewTransactionDialog(swap, raw_tx, self.swap_storage, preview_title=message, parent=self)
     if preview_dialog.exec_():
       print("Transaction Approved. Sending!")
       submitted_txid = do_rpc("sendrawtransaction", hexstring=raw_tx)
       return submitted_txid
     return None
 
-  def view_order_details(self, widget):
-    list = widget.listWidget()
-    swap_row = list.itemWidget(widget)
-    details = OrderDetailsDialog(swap_row.get_data(), self.swap_storage, parent=self, dialog_mode="multiple")
-    return details.exec_()
+  def view_order_details(self, widget, swap=None, force_order=True):
+    if not swap:
+      list = widget.listWidget()
+      swap_row = list.itemWidget(widget)
+      swap = swap_row.get_data()
+    (success, result) = self.setup_trades(swap, force_order)
+    #TODO: Wait for TXID if one was sent out here
+    if success:
+      if result == None:
+        details = OrderDetailsDialog(swap, self.swap_storage, parent=self, dialog_mode="multiple")
+        return details.exec_()
+      elif result:
+        show_dialog("Sent", "Transaction has been submitted. Please try again soon.", result, self)
+    elif result:
+      show_error("Error", "Transactions could not be setup for trade.", result, self)
 
   def update_order_details(self, widget):
     list = widget.listWidget()
@@ -224,37 +246,11 @@ class MainWindow(QMainWindow):
     self.update_lists()
 
   def update_lists(self):
-    #Check for state changes, by looking over UTXO's
-    
-    #my_swap_checks = [swap for swap in self.swap_storage.swaps if swap.own and swap.state in ["new", "pending"]]
-    #for swap in my_swap_checks:
-    #  #if a trade's UTXO is now spent, then this should be moved to completed
-    #  mem_spent = self.swap_storage.swap_utxo_spent(swap.utxo) #Spent in mempool or confirmed
-    #  
-    #  if mem_spent:
-    #    confirmed_spent = self.swap_storage.swap_utxo_spent(swap.utxo,in_mempool=False, check_cache=False)
-    #    if not confirmed_spent and swap.state == "new": #Spent in mempooly only, not confirmed yet
-    #      print("Swap spent in mempool!")
-    #      swap.state = "pending"
-    #      self.swap_storage.save_swaps()
-    #    elif confirmed_spent:
-    #      swap_txid = search_swap_tx(swap.utxo)
-    #      #NOTE: the transaction we get back here can be vastly different
-    #      # if we've signed the same UTXO out w/ multiple Signed Partials
-    #      #TODO: Reparse the final transaction properly
-    #      print("Swap Completed! txid: ", swap_txid)
-    #      swap.state = "completed"
-    #      swap.txid = swap_txid
-    #      self.swap_storage.save_swaps()
-
     self.add_update_trade_items(self.lstAllOrders, self.swap_storage.swaps)
 
-    #self.add_update_trade_items(self.lstBuyOrders,       [swap for swap in self.swap_storage.swaps if swap.type == "buy"  ])
-    #self.add_update_trade_items(self.lstSellOrders,      [swap for swap in self.swap_storage.swaps if swap.type == "sell" ])
-    #self.add_update_trade_items(self.lstTradeOrders,     [swap for swap in self.swap_storage.swaps if swap.type == "trade"])
     self.add_update_swap_items(self.lstPastOrders,      [swap for swap in self.swap_storage.history if (swap.state in ["pending", "completed"]) and swap.own      ])
     self.add_update_swap_items(self.lstCompletedOrders, [swap for swap in self.swap_storage.history if (swap.state in ["pending", "completed"]) and not swap.own  ])
-    
+
     self.add_update_asset_items(self.lstMyAssets,       [self.swap_storage.assets[asset_name] for asset_name in self.swap_storage.my_asset_names])
 
   def add_update_asset_items(self, list, asset_list):

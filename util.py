@@ -139,6 +139,9 @@ def show_dialog(title, message, message_extra="", parent=None):
 def show_prompt(title, message, message_extra="", parent=None):
   return show_dialog_inner(title, message, QMessageBox.Yes | QMessageBox.No, QMessageBox.Information, message_extra=message_extra, parent=parent)
 
+def show_prompt_3(title, message, message_extra="", parent=None):
+  return show_dialog_inner(title, message, QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel, QMessageBox.Information, message_extra=message_extra, parent=parent)
+
 def backup_remove_file(file_path):
   (root, ext) = os.path.splitext(file_path)
   new_name = "old_{}_{}.{}".format(file_path, datetime.datetime.now().strftime('%Y%m%d%H%M%S'), ext) 

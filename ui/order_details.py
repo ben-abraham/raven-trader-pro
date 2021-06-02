@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import sys, getopt, argparse, json, time, getpass, os.path
+import sys, getopt, argparse, json, time, getpass, os.path, re
 from util import *
 from rvn_rpc import *
 
@@ -21,6 +21,7 @@ class OrderDetailsDialog(QDialog):
     self.swap_storage = swap_storage
     self.dialog_mode = dialog_mode
     self.current_number = 0
+    self.last_text = ""
     print(self.swap)
     if self.dialog_mode == "single":
       self.setWindowTitle("Order Details")
@@ -51,7 +52,7 @@ class OrderDetailsDialog(QDialog):
     self.current_number = swap_index
     new_swap = self.trade.transactions[self.current_number]
     self.swap = new_swap
-    self.setWindowTitle("Order Details [{}/{}]".format(self.current_number, len(self.trade.order_utxos))) #SwapTrade
+    self.setWindowTitle("Order Details [{}/{}]".format(self.current_number + 1, len(self.trade.order_utxos))) #SwapTrade
     self.update_for_swap(new_swap)
 
   def update_for_swap(self, swap):
@@ -110,8 +111,14 @@ class OrderDetailsDialog(QDialog):
   def raw_tx_changed(self):
     if self.dialog_mode != "complete":
       return
+    new_text = self.txtSigned.toPlainText()
+    if new_text == self.last_text:
+      return
+    self.last_text = new_text
+    if not re.search("^[0-9a-fA-F]*$", new_text):
+      return
 
-    parsed = SwapTransaction.decode_swap(self.txtSigned.toPlainText())
+    parsed = SwapTransaction.decode_swap(new_text)
     if parsed:
       self.swap = parsed
       self.update_for_swap(self.swap)

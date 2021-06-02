@@ -77,9 +77,7 @@ class SwapTransaction():
     raw_tx = do_rpc("createrawtransaction", inputs=[vin], outputs=vout)
 
     #TODO: Better user interaction here
-    print("Signing Partial Transaction")
     signed_raw = do_rpc("signrawtransaction", hexstring=raw_tx, prevtxs=None, privkeys=None, sighashtype="SINGLE|ANYONECANPAY")
-    print("Done!")
 
     self.raw = signed_raw["hex"]
     return self.raw

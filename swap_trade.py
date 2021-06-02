@@ -67,7 +67,11 @@ class SwapTrade():
     if missing_trades == 0:
       return True #Pool is filled
 
-    ready_utxo = swap_storage.find_utxo_multiple_exact(self.in_type, self.in_quantity)
+    #Fallback destination address
+    if not self.destination:
+      self.destination = do_rpc("getrawchangeaddress")
+
+    ready_utxo = swap_storage.find_utxo_multiple_exact(self.in_type, self.in_quantity, skip_locks=False)
     available_utxos = len(ready_utxo)
 
     if available_utxos < missing_trades:
@@ -80,7 +84,9 @@ class SwapTrade():
     for ready_utxo in ready_utxo[:missing_trades]:
       use_utxo = make_utxo(ready_utxo)
       self.order_utxos.append(use_utxo)
-      self.transactions.append(self.create_trade_transaction(use_utxo, self.current_number))
+      new_trade = self.create_trade_transaction(use_utxo, self.current_number)
+      new_trade.sign_partial()
+      self.transactions.append(new_trade)
       self.current_number += 1
       swap_storage.add_lock(utxo=use_utxo)
     return True #Pool now filled (/or there are enough items to fill it otherwise)
@@ -117,6 +123,8 @@ class SwapTrade():
     #Send any extra assets back to ourselves
     if self.in_type != "rvn":
       (asset_total, asset_vins) = swap_storage.find_utxo_set("asset", quantity_required, name=self.in_type, skip_locks = True)
+      if not asset_vins:
+        raise Exception("Not enough assets to fund trade!")
       setup_vins = [utxo_copy(vin) for vin in asset_vins]
       if asset_total > quantity_required:
         setup_vouts[asset_change_addr] = make_transfer(self.in_type, asset_total - quantity_required)
@@ -144,23 +152,28 @@ class SwapTrade():
   def can_create_single_order(self, swap_storage):
     return self.attempt_fill_trade_pool(swap_storage, max_add=1)
 
-  def order_completed(self, utxo):
+  def order_completed(self, utxo, sent_txid):
     if utxo not in self.order_utxos:
       return None
+    self.order_utxos.remove(utxo)
+    self.executed_utxos.append(utxo)
+    self.order_count -= 1
+
     matching_tx = None
-    for tx in self.transaction:
+    for tx in self.transactions:
       if tx.utxo == utxo:
         matching_tx = tx
         break
     if matching_tx == None:
       return None
-    self.order_utxos.remove(utxo)
-    self.executed_utxos.append(utxo)
-    self.transactions.remove(matching_tx)
+
+    matching_tx.state = "completed"
+    matching_tx.txid = sent_txid
+    return matching_tx
 
   def create_trade_transaction(self, utxo, number):
     #TODO: Validate utxo is correctly sized
-    
+
     return SwapTransaction({
       "in_type": self.in_type,
       "out_type": self.out_type,
@@ -171,8 +184,8 @@ class SwapTrade():
       "utxo": utxo,
       "destination": self.destination,
       "state": "new",
-      "type": "trade",
-      "raw": "--",
+      "type": self.type,
+      "raw": "",
       "txid": ""
     })
     

@@ -14,11 +14,11 @@ from rvn_rpc import *
 from swap_transaction import SwapTransaction
 
 class PreviewTransactionDialog(QDialog):
-  def __init__(self, partial_swap, final_swap, swap_storage, parent=None, **kwargs):
+  def __init__(self, partial_swap, final_swap, swap_storage, preview_title="Confirm Transaction", parent=None, **kwargs):
     super().__init__(parent, **kwargs)
     uic.loadUi("ui/qt/preview_order.ui", self)
     self.swap = partial_swap
-    self.setWindowTitle("Confirm Transaction [2/2]")
+    self.setWindowTitle(preview_title)
     self.txtRawFinal.setText(final_swap)
 
     decoded = do_rpc("decoderawtransaction", hexstring=final_swap)
@@ -26,8 +26,13 @@ class PreviewTransactionDialog(QDialog):
     for vin in decoded["vin"]:
       #Have to use explorer API here because there is no guarantee that these transactions are local
       #vin_tx = do_rpc("getrawtransaction", txid=vin["txid"], verbose=True)
-      vin_tx = decode_full(vin["txid"])
-      src_vout = vin_tx["vout"][vin["vout"]]
+      local_vout = do_rpc("gettxout", txid=vin["txid"], n=int(vin["vout"]))
+      if local_vout:
+        vin_tx = do_rpc("getrawtransaction", txid=vin["txid"], verbose=True)
+        src_vout = local_vout
+      else:
+        vin_tx = decode_full(vin["txid"])
+        src_vout = vin_tx["vout"][vin["vout"]]
       src_addr = src_vout["scriptPubKey"]["addresses"][0]
       is_my_utxo = False
       

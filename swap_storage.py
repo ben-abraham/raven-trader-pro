@@ -169,13 +169,14 @@ class SwapStorage:
       wallet_locks = do_rpc("listlockunspent")
       for lock in wallet_locks:
         txout = do_rpc("gettxout", txid=lock["txid"], n=int(lock["vout"]), include_mempool=True)
-        utxo = vout_to_utxo(txout, lock["txid"], int(lock["vout"]))
-        if utxo["type"] == "rvn":
-          self.utxos.append(utxo)
-        elif utxo["type"] == "asset":
-          if utxo["asset"] not in self.assets:
-            self.assets[utxo["asset"]] = []
-          self.assets[utxo["asset"]]["outpoints"].append(utxo)
+        if txout:
+          utxo = vout_to_utxo(txout, lock["txid"], int(lock["vout"]))
+          if utxo["type"] == "rvn":
+            self.utxos.append(utxo)
+          elif utxo["type"] == "asset":
+            if utxo["asset"] not in self.assets:
+              self.assets[utxo["asset"]] = []
+            self.assets[utxo["asset"]]["outpoints"].append(utxo)
 
   def wallet_unlock_all(self):
     do_rpc("lockunspent", unlock=True)
@@ -188,8 +189,14 @@ class SwapStorage:
     self.assets = do_rpc("listmyassets", asset="", verbose=True)
 
     removed_orders = self.search_completed()
-    for removed in removed_orders:
-      print("Order removed: ", removed)
+    for (trade, utxo) in removed_orders:
+      #TODO: Notify via event here
+      print("Order removed: ", utxo)
+      #If we find a matching order in the tx list, add it to history
+      #TODO: search chain for used UTXO
+      finished_order = trade.order_completed(utxo, None)
+      if finished_order:
+        self.add_completed(finished_order)
 
     #Load details of wallet-locked transactions, inserted into self.utxos/assets
     self.load_wallet_locked()
@@ -242,6 +249,9 @@ class SwapStorage:
     else:
       return sum([float(lock["amount"]) for lock in self.locks if lock["type"] == "asset" and lock["name"] == type])
 
+  def add_completed(self, swap_transaction):
+    self.history.append(swap_transaction)
+
   def search_completed(self, include_mempool=True):
     all_found = []
     for trade in self.swaps:
@@ -249,7 +259,7 @@ class SwapStorage:
         #TODO: If loading against a different wallet with the same .json files,
         # orders will appear completed as the UTXO's are no longer in our active set
         if self.swap_utxo_spent(utxo, in_mempool=include_mempool, check_cache=False):
-          all_found.append(utxo)
+          all_found.append((trade, utxo))
     return all_found
           
 #
@@ -281,13 +291,18 @@ class SwapStorage:
             return asset_utxo
     return None
 
-  def find_utxo_multiple_exact(self, type, quantity, name=None):
+  def find_utxo_multiple_exact(self, type, quantity, name=None, skip_locks=False):
+    results = []
     if type == "rvn":
-      return [utxo for utxo in self.utxos if utxo["amount"] == quantity]
+      results = [utxo for utxo in self.utxos if utxo["amount"] == quantity]
     elif type == "asset":
-      return [utxo for utxo in self.assets[name]["outpoints"] if utxo["amount"] == quantity]
+      results = [utxo for utxo in self.assets[name]["outpoints"] if utxo["amount"] == quantity]
     else: #Use the type name itself
-      return [utxo for utxo in self.assets[type]["outpoints"] if utxo["amount"] == quantity]
+      results = [utxo for utxo in self.assets[type]["outpoints"] if utxo["amount"] == quantity]
+    if skip_locks:
+      return results
+    else:
+      return [utxo for utxo in results if not self.is_taken(utxo, skip_locks=True)] #Only look for ones taken by active trade orders
 
   def find_utxo_set(self, type, quantity, mode="combine", name=None, skip_locks=False):
     found_set = None
@@ -368,7 +383,7 @@ class SwapStorage:
         if lock["txid"] == utxo["txid"] and lock["vout"] == utxo["vout"]:
           return True
     for swap in self.swaps:
-      expected = "{}|{}".format(utxo["txid"], utxo["vout"])
+      expected = join_utxo(utxo["txid"], utxo["vout"])
       if expected in swap.order_utxos:
         return True
     return False

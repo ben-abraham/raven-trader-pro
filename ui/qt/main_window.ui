@@ -104,7 +104,7 @@
               <item>
                 <widget class="QLabel" name="label">
                 <property name="text">
-                  <string>Buy Orders</string>
+                  <string>Active Orders</string>
                 </property>
                 <property name="alignment">
                   <set>Qt::AlignCenter</set>

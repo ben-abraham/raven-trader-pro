@@ -26,6 +26,7 @@ def do_rpc(method, log_error=True, **kwargs):
     return None
 
 def decode_full(txid):
+  print("Query Full: {}".format(txid))
   resp = get(TX_QRY.format(txid))
   if resp.status_code != 200:
     print("Error fetching raw transaction")
