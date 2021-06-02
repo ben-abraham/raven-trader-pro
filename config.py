@@ -6,6 +6,7 @@ RPC_HOST = "localhost"
 RPC_POST = 18766 if TESTNET else 8766
 SWAP_STORAGE_PATH = "orders.json"
 LOCK_STORAGE_PATH = "locks.json"
+HISTORY_STORGE_PATH = "history.json"
 RPC_UNLOCK_PHRASE = "" #if needed
 
 

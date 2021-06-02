@@ -200,7 +200,7 @@ class MainWindow(QMainWindow):
   def view_order_details(self, widget):
     list = widget.listWidget()
     swap_row = list.itemWidget(widget)
-    details = OrderDetailsDialog(swap_row.get_data(), self.swap_storage, parent=self, dialog_mode="details")
+    details = OrderDetailsDialog(swap_row.get_data(), self.swap_storage, parent=self, dialog_mode="multiple")
     return details.exec_()
 
   def update_order_details(self, widget):
@@ -252,8 +252,8 @@ class MainWindow(QMainWindow):
     #self.add_update_trade_items(self.lstBuyOrders,       [swap for swap in self.swap_storage.swaps if swap.type == "buy"  ])
     #self.add_update_trade_items(self.lstSellOrders,      [swap for swap in self.swap_storage.swaps if swap.type == "sell" ])
     #self.add_update_trade_items(self.lstTradeOrders,     [swap for swap in self.swap_storage.swaps if swap.type == "trade"])
-    #self.add_update_swap_items(self.lstPastOrders,      [swap for swap in self.swap_storage.swaps if (swap.state in ["pending", "completed"]) and swap.own      ], QTwoLineRowWidget.from_swap)
-    #self.add_update_swap_items(self.lstCompletedOrders, [swap for swap in self.swap_storage.swaps if (swap.state in ["pending", "completed"]) and not swap.own  ], QTwoLineRowWidget.from_swap)
+    self.add_update_swap_items(self.lstPastOrders,      [swap for swap in self.swap_storage.history if (swap.state in ["pending", "completed"]) and swap.own      ])
+    self.add_update_swap_items(self.lstCompletedOrders, [swap for swap in self.swap_storage.history if (swap.state in ["pending", "completed"]) and not swap.own  ])
     
     self.add_update_asset_items(self.lstMyAssets,       [self.swap_storage.assets[asset_name] for asset_name in self.swap_storage.my_asset_names])
 

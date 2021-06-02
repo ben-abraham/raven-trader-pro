@@ -20,11 +20,19 @@ class OrderDetailsDialog(QDialog):
     self.swap = swap
     self.swap_storage = swap_storage
     self.dialog_mode = dialog_mode
+    self.current_number = 0
     print(self.swap)
-    if self.dialog_mode == "details":
+    if self.dialog_mode == "single":
       self.setWindowTitle("Order Details")
-      self.update_for_swap(self.swap)
-      #self.txtSigned.setText(self.swap.raw)
+      self.update_for_swap(self.swap) #SwapTransaction
+      self.txtSigned.setText(self.swap.raw)
+      self.buttonBox.removeButton(self.buttonBox.button(QDialogButtonBox.Cancel))
+    elif self.dialog_mode == "multiple":
+      self.trade = self.swap
+      self.trade_number_changed(0)
+      self.spnOrderNumber.valueChanged.connect(self.trade_number_changed)
+      self.spnOrderNumber.setEnabled(True)
+      self.spnOrderNumber.setMaximum(len(self.trade.order_utxos) - 1)
       self.buttonBox.removeButton(self.buttonBox.button(QDialogButtonBox.Cancel))
     elif self.dialog_mode == "complete":
       self.setWindowTitle("Preview Completion [1/2]")
@@ -38,6 +46,13 @@ class OrderDetailsDialog(QDialog):
       self.spnUpdateUnitPrice.setReadOnly(False)
       self.spnUpdateUnitPrice.valueChanged.connect(self.update_labels)
       self.update_for_swap(self.swap)
+
+  def trade_number_changed(self, swap_index):
+    self.current_number = swap_index
+    new_swap = self.trade.transactions[self.current_number]
+    self.swap = new_swap
+    self.setWindowTitle("Order Details [{}/{}]".format(self.current_number, len(self.trade.order_utxos))) #SwapTrade
+    self.update_for_swap(new_swap)
 
   def update_for_swap(self, swap):
     self.lblMine.setText("Yes" if swap.own else "No")
@@ -66,11 +81,11 @@ class OrderDetailsDialog(QDialog):
       else:
         self.lblType.setText("Exchange - You want to exchange assets with another party.")
         
-
     self.lblQuantity.setText(str(swap.quantity()))
     self.lblUTXO.setText(swap.utxo)
     self.spnUpdateUnitPrice.setValue(swap.unit_price())
     self.txtDestination.setText(swap.destination)
+    self.txtSigned.setText(swap.raw)
 
   def update_labels(self):
     new_price = self.spnUpdateUnitPrice.value()

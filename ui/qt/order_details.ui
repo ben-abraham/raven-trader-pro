@@ -14,17 +14,11 @@
    <string>Dialog</string>
   </property>
   <layout class="QFormLayout" name="formLayout">
+
    <item row="0" column="0">
     <widget class="QLabel" name="label_7">
      <property name="text">
       <string>Mine</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="0">
-    <widget class="QLabel" name="label_8">
-     <property name="text">
-      <string>Status</string>
      </property>
     </widget>
    </item>
@@ -35,6 +29,14 @@
      </property>
     </widget>
    </item>
+
+   <item row="1" column="0">
+    <widget class="QLabel" name="label_8">
+     <property name="text">
+      <string>Status</string>
+     </property>
+    </widget>
+   </item>
    <item row="1" column="1">
     <widget class="QLabel" name="lblStatus">
      <property name="text">
@@ -42,6 +44,22 @@
      </property>
     </widget>
    </item>
+
+   <item row="2" column="0">
+    <widget class="QLabel" name="label_6">
+     <property name="text">
+      <string>Type</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QLabel" name="lblType">
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
+   
    <item row="3" column="0">
     <widget class="QLabel" name="label">
      <property name="text">
@@ -56,6 +74,7 @@
      </property>
     </widget>
    </item>
+   
    <item row="4" column="0">
     <widget class="QLabel" name="label_3">
      <property name="text">
@@ -63,24 +82,18 @@
      </property>
     </widget>
    </item>
-   <item row="5" column="0">
-    <widget class="QLabel" name="label_4">
-     <property name="text">
-      <string>Unit Price</string>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="0">
-    <widget class="QLabel" name="label_5">
-     <property name="text">
-      <string>Total Price</string>
-     </property>
-    </widget>
-   </item>
    <item row="4" column="1">
     <widget class="QLabel" name="lblQuantity">
      <property name="text">
       <string/>
+     </property>
+    </widget>
+   </item>
+   
+   <item row="5" column="0">
+    <widget class="QLabel" name="label_4">
+     <property name="text">
+      <string>Unit Price</string>
      </property>
     </widget>
    </item>
@@ -103,6 +116,14 @@
      </property>
     </widget>
    </item>
+   
+   <item row="6" column="0">
+    <widget class="QLabel" name="label_5">
+     <property name="text">
+      <string>Total Price</string>
+     </property>
+    </widget>
+   </item>
    <item row="6" column="1">
     <widget class="QLabel" name="lblTotalPrice">
      <property name="text">
@@ -110,20 +131,7 @@
      </property>
     </widget>
    </item>
-   <item row="9" column="0">
-    <widget class="QLabel" name="label_9">
-     <property name="text">
-      <string>Signed Partial</string>
-     </property>
-    </widget>
-   </item>
-   <item row="9" column="1">
-    <widget class="QTextEdit" name="txtSigned">
-     <property name="readOnly">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
+
    <item row="7" column="0">
     <widget class="QLabel" name="label_2">
      <property name="text">
@@ -138,20 +146,7 @@
      </property>
     </widget>
    </item>
-   <item row="2" column="0">
-    <widget class="QLabel" name="label_6">
-     <property name="text">
-      <string>Type</string>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="1">
-    <widget class="QLabel" name="lblType">
-     <property name="text">
-      <string/>
-     </property>
-    </widget>
-   </item>
+
    <item row="8" column="0">
     <widget class="QLabel" name="label_6">
      <property name="text">
@@ -169,20 +164,55 @@
      </property>
     </widget>
    </item>
+
+   <item row="9" column="0">
+    <widget class="QLabel" name="label_9">
+     <property name="text">
+      <string>Signed Partial</string>
+     </property>
+    </widget>
+   </item>
+   <item row="9" column="1">
+    <widget class="QTextEdit" name="txtSigned">
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   
+   <item row="10" column="1">
+    <widget class="QLabel" name="lblWarning">
+     <property name="text">
+      <string>Warning: A Signed Partial remains valid as long at the source UTXO is (details on GitHub.)&lt;br/&gt;Updating the price will only generate a new Signed Partial locally,&lt;br/&gt;this does not affect any previously created/shared Signed Partials for these same assets.</string>
+     </property>
+    </widget>
+   </item>
+
+   <item row="11" column="0">
+    <widget class="QLabel" name="order">
+     <property name="text">
+      <string>Order Number</string>
+     </property>
+    </widget>
+   </item>
    <item row="11" column="1">
+    <widget class="QSpinBox" name="spnOrderNumber">
+     <property name="value">
+      <number>1</number>
+     </property>
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+
+   <item row="12" column="1">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
      <property name="standardButtons">
       <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-     </property>
-    </widget>
-   </item>
-   <item row="10" column="1">
-    <widget class="QLabel" name="lblWarning">
-     <property name="text">
-      <string>Warning: A Signed Partial remains valid as long at the source UTXO is (details on GitHub.)&lt;br/&gt;Updating the price will only generate a new Signed Partial locally,&lt;br/&gt;this does not affect any previously created/shared Signed Partials for these same assets.</string>
      </property>
     </widget>
    </item>

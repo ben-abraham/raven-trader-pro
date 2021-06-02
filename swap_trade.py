@@ -144,6 +144,20 @@ class SwapTrade():
   def can_create_single_order(self, swap_storage):
     return self.attempt_fill_trade_pool(swap_storage, max_add=1)
 
+  def order_completed(self, utxo):
+    if utxo not in self.order_utxos:
+      return None
+    matching_tx = None
+    for tx in self.transaction:
+      if tx.utxo == utxo:
+        matching_tx = tx
+        break
+    if matching_tx == None:
+      return None
+    self.order_utxos.remove(utxo)
+    self.executed_utxos.append(utxo)
+    self.transactions.remove(matching_tx)
+
   def create_trade_transaction(self, utxo, number):
     #TODO: Validate utxo is correctly sized
     

@@ -20,8 +20,12 @@ class SwapStorage:
     super()
     self.swaps = []
     self.locks = []
+    self.history = []
+    self.on_swap_executed = None
+    self.on_utxo_spent = None
   
   def on_load(self):
+    self.load_history()
     self.load_locked()
     self.load_swaps()
     self.update_wallet()
@@ -29,48 +33,59 @@ class SwapStorage:
     self.refresh_locks()
 
   def on_close(self):
+    self.save_history()
     self.save_locked()
     self.save_swaps()
+
+  def call_if_set(self, fn_call, item):
+    if fn_call != None:
+      fn_call(item)
 
 #
 # File I/O
 #
 
-  def load_swaps(self):
-    if not os.path.isfile(SWAP_STORAGE_PATH):
+  def __load__base(self, path, hook, title):
+    if not os.path.isfile(path):
       return []
-    fSwap = open(SWAP_STORAGE_PATH, mode="r")
+    fSwap = open(path, mode="r")
     swapJson = fSwap.read()
     fSwap.close()
-    self.swaps = json.loads(swapJson, object_hook=SwapTrade)
-    print("Loaded {} swaps from disk".format(len(self.swaps)))
+    data = json.loads(swapJson, object_hook=hook)
+    print("Loaded {} {} records from disk".format(len(data), title))
+    return data
+
+  def __save__base(self, path, data):
+    dataJson = json.dumps(data, default=lambda o: o.__dict__, indent=2)
+    fSwap = open(path, mode="w")
+    fSwap.truncate()
+    fSwap.write(dataJson)
+    fSwap.flush()
+    fSwap.close()
+
+  def load_swaps(self):
+    self.swaps = self.__load__base(SWAP_STORAGE_PATH, SwapTrade, "Swap")
     return self.swaps
 
   def save_swaps(self):
-    swapJson = json.dumps(self.swaps, default=lambda o: o.__dict__, indent=2)
-    fSwap = open(SWAP_STORAGE_PATH, mode="w")
-    fSwap.truncate()
-    fSwap.write(swapJson)
-    fSwap.flush()
-    fSwap.close()
+    self.__save__base(SWAP_STORAGE_PATH, self.swaps)
   
+
   def load_locked(self):
-    if not os.path.isfile(LOCK_STORAGE_PATH):
-      return []
-    fLock = open(LOCK_STORAGE_PATH, mode="r")
-    lockJson = fLock.read()
-    fLock.close()
-    self.locks = json.loads(lockJson)
-    print("Loaded {} locks from disk".format(len(self.locks)))
+    self.locks = self.__load__base(LOCK_STORAGE_PATH, dict, "Lock")
     return self.locks
 
   def save_locked(self):
-    lockJson = json.dumps(self.locks, default=lambda o: o.__dict__, indent=2)
-    fLock = open(LOCK_STORAGE_PATH, mode="w")
-    fLock.truncate()
-    fLock.write(lockJson)
-    fLock.flush()
-    fLock.close()
+    self.__save__base(LOCK_STORAGE_PATH, self.locks)
+
+
+  def load_history(self):
+    self.history = self.__load__base(HISTORY_STORGE_PATH, SwapTransaction, "History")
+    return self.history
+
+  def save_history(self):
+    self.__save__base(HISTORY_STORGE_PATH, self.history)
+
 
   def add_swap(self, swap):
     self.swaps.append(swap)
@@ -172,6 +187,10 @@ class SwapStorage:
     #Pull list of assets for selecting
     self.assets = do_rpc("listmyassets", asset="", verbose=True)
 
+    removed_orders = self.search_completed()
+    for removed in removed_orders:
+      print("Order removed: ", removed)
+
     #Load details of wallet-locked transactions, inserted into self.utxos/assets
     self.load_wallet_locked()
 
@@ -223,6 +242,16 @@ class SwapStorage:
     else:
       return sum([float(lock["amount"]) for lock in self.locks if lock["type"] == "asset" and lock["name"] == type])
 
+  def search_completed(self, include_mempool=True):
+    all_found = []
+    for trade in self.swaps:
+      for utxo in trade.order_utxos:
+        #TODO: If loading against a different wallet with the same .json files,
+        # orders will appear completed as the UTXO's are no longer in our active set
+        if self.swap_utxo_spent(utxo, in_mempool=include_mempool, check_cache=False):
+          all_found.append(utxo)
+    return all_found
+          
 #
 # UTXO Searching
 #
