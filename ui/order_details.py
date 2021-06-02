@@ -95,19 +95,33 @@ class OrderDetailsDialog(QDialog):
 
   def swap_error(self):
     #Sell order means we are buying
-    if self.swap.type == "buy":
-      if self.swap.asset() not in self.swap_storage.my_asset_names:
-        return "You don't own that asset."
-      if self.swap.quantity() > self.swap_storage.assets[self.swap.asset()]["balance"]:
-        return "You don't own enough of that asset."
-    elif self.swap.type == "sell":
-      if self.swap.total_price() > self.swap_storage.rvn_balance():
-        return "You don't have enough RVN to purchase."
-    elif self.swap.type == "trade":
-      if self.swap.out_type not in self.swap_storage.my_asset_names:
-        return "You don't own that asset."
-      if self.swap.quantity() > self.swap_storage.assets[self.swap.out_type]["balance"]:
-        return "You don't own enough of that asset."
+    asset_needed = None
+    asset_qty = 0
+    rvn_qty = 0
+
+    #if this is our swap, we need to provide inputs
+    if self.swap.own:
+      if self.swap.in_type == "rvn":
+        rvn_qty += self.swap.in_quantity #RVN Input
+      else:
+        asset_needed = self.swap.in_type
+        asset_qty = self.swap.in_quantity
+    #If this is a completing order, we need the outputs
+    else:
+      if self.swap.out_type == "rvn":
+        rvn_qty += self.swap.out_quantity
+      else:
+        asset_needed = self.swap.out_type
+        asset_qty = self.swap.out_quantity
+
+    if asset_needed:
+      if asset_needed not in self.swap_storage.my_asset_names:
+        return "You don't own the asset [{}].".format(asset_name)
+      if asset_qty > self.swap_storage.assets[asset_needed]["balance"]:
+        return "You don't own enough of that asset. Own {}, Need {}".format(self.swap_storage.assets[asset_needed]["balance"], asset_qty)
+    if rvn_qty > self.swap_storage.rvn_balance():
+      return "You don't have enough RVN to purchase."
+    return None
 
   def raw_tx_changed(self):
     if self.dialog_mode != "complete":
