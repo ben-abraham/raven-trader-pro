@@ -8,7 +8,6 @@ from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
 import sys, getopt, argparse, json, time, getpass, os.path, datetime, shutil
-from config import *
 
 from app_settings import AppSettings
 

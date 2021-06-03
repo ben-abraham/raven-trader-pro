@@ -9,7 +9,6 @@ from PyQt5 import uic
 
 import sys, getopt, argparse, json, time, getpass, os.path
 from util import *
-from config import *
 
 from app_settings import AppSettings
 

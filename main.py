@@ -20,7 +20,6 @@ from app_settings import AppSettings
 
 from util import *
 from rvn_rpc import *
-from config import *
     
 
 ## Main app entry point

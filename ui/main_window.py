@@ -10,7 +10,6 @@ from PyQt5 import uic
 import sys, getopt, argparse, json, time, getpass, os.path
 from util import *
 from rvn_rpc import *
-from config import *
 
 from ui.preview_order import PreviewTransactionDialog
 from ui.order_details import OrderDetailsDialog
