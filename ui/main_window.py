@@ -29,6 +29,8 @@ class MainWindow(QMainWindow):
     self.settings = AppSettings.instance
     self.swap_storage = storage
 
+    self.update_dynamic_menus()
+
     self.actionExit.triggered.connect(self.close)
     self.actionRefresh.triggered.connect(self.refresh_main_window)
 
@@ -77,7 +79,7 @@ class MainWindow(QMainWindow):
     self.swap_storage.add_swap(trade)
     self.swap_storage.save_data()
     self.update_lists()
-    self.view_order_details(trade)
+    self.view_trade_details(trade)
 
   def action_remove_trade(self):
     if self.menu_context["type"] != "trade":
@@ -221,6 +223,25 @@ class MainWindow(QMainWindow):
     return (details.exec_(), details.spnUpdateUnitPrice.value())
 
 #
+# Dynamic Menu Items
+#
+
+  def update_rpc_connection(self, _, index, connection):
+    #Save any changes to swaps
+    old_index = self.settings.rpc_index()
+    self.swap_storage.save_data()
+    self.settings.set_rpc_index(index)
+    if test_rpc_status():
+      print("Switching RPC")
+      self.swap_storage.invalidate_all()
+      self.swap_storage.load_data()
+      self.actionRefresh.trigger()
+    else:
+      print("Error testing RPC")
+      self.settings.set_rpc_index(old_index)
+    self.update_dynamic_menus()
+
+#
 # Updating
 #
 
@@ -233,6 +254,16 @@ class MainWindow(QMainWindow):
     self.lblBalanceTotal.setText("Total Balance: {:.8g} RVN [{:.8g} Assets]".format(total_balance[0], total_balance[2]))
     self.lblBalanceAvailable.setText("Total Available: {:.8g} RVN [{:.8g} Assets]".format(avail_balance[0], avail_balance[2]))
     self.update_lists()
+
+  def update_dynamic_menus(self):
+    self.menuConnection.clear()
+
+    for index, rpc in enumerate(self.settings.read("rpc_connections")):
+      rpc_action = QAction(rpc["title"], self, checkable=True)
+      rpc_action.triggered.connect(lambda chk, data=rpc, index=index:self.update_rpc_connection(chk, index, data))
+      rpc_action.setCheckable(True)
+      rpc_action.setChecked(self.settings.rpc_index() == index)
+      self.menuConnection.addAction(rpc_action)
 
   def update_lists(self):
     self.add_update_trade_items(self.lstAllOrders, self.swap_storage.swaps)

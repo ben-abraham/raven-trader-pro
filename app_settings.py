@@ -61,6 +61,7 @@ class AppSettings:
     self.init_setting("fee_rate", 0.011)
     self.init_setting("default_destination", "")
     self.init_setting("locking_mode", True)
+    self.init_setting("active_rpc", 0)
 
 #
 # File I/O
@@ -92,9 +93,15 @@ class AppSettings:
 # RPC Settings
 #
 
+  def rpc_index(self):
+    return self.read("active_rpc")
+
+  def set_rpc_index(self, new_index):
+    return self.write("active_rpc", new_index)
+
   def rpc_details(self):
     rpc_connections = self.read("rpc_connections")
-    return rpc_connections[0]
+    return rpc_connections[self.rpc_index()]
 
   def rpc_url(self):
     rpc_details = self.rpc_details()
@@ -105,8 +112,12 @@ class AppSettings:
 
   def rpc_set_testnet(self, testnet):
     rpc_connections = self.read("rpc_connections")
-    rpc_connections[0]["testnet"] = testnet
+    rpc_connections[self.rpc_index()]["testnet"] = testnet
     self.write("rpc_connections", rpc_connections)
+
+  def rpc_save_path(self):
+    rpc = self.rpc_details()
+    return "{}_{}.json".format(rpc["host"].replace(".", "_"), rpc["port"])
 
 #
 # Other helper

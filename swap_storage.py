@@ -42,7 +42,6 @@ class SwapStorage:
 # File I/O
 #
   def load_data(self):
-    #TODO: Load this uniquely per-wallet to avoid crosstalk
     loaded_data = load_json(self.get_path(), dict, "Storage")
     self.swaps = init_list(loaded_data["trades"], SwapTrade) if "trades" in loaded_data else []
     self.locks = init_list(loaded_data["locks"], dict) if "locks" in loaded_data else []
@@ -54,13 +53,12 @@ class SwapStorage:
       "locks": self.locks,
       "history": self.history
     }
-    #TODO: Save this uniquely per-wallet to avoid crosstalk
     save_json(self.get_path(), save_payload)
 
   def get_path(self):
     base_path = os.path.expanduser(AppSettings.instance.read("data_path"))
     ensure_directory(base_path)
-    return os.path.join(base_path, "data.json")
+    return os.path.join(base_path, AppSettings.instance.rpc_save_path())
 
   def add_swap(self, swap):
     self.swaps.append(swap)
@@ -157,6 +155,13 @@ class SwapStorage:
   def wallet_unlock_all(self):
     do_rpc("lockunspent", unlock=True)
 
+  def invalidate_all(self):
+    self.utxos = []
+    self.assets = {}
+    self.my_asset_names = []
+    self.total_balance = (0,0,0)
+    self.available_balance = (0,0,0)
+
   def update_wallet(self):
     #Locked UTXO's are excluded from the list command
     self.utxos = do_rpc("listunspent")
@@ -170,9 +175,7 @@ class SwapStorage:
       print("Order removed: ", utxo)
       #If we find a matching order in the tx list, add it to history
       #TODO: search chain for used UTXO
-      finished_order = trade.order_completed(utxo, None)
-      if finished_order:
-        self.add_completed(finished_order)
+      finished_order = trade.order_completed(self, utxo, None)
 
     #Load details of wallet-locked transactions, inserted into self.utxos/assets
     self.load_wallet_locked()

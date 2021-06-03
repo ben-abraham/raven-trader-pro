@@ -160,7 +160,7 @@ class SwapTrade():
   def can_create_single_order(self, swap_storage):
     return self.attempt_fill_trade_pool(swap_storage, max_add=1)
 
-  def order_completed(self, utxo, sent_txid):
+  def order_completed(self, swap_storage, utxo, sent_txid):
     if utxo not in self.order_utxos:
       return None
     self.order_utxos.remove(utxo)
@@ -177,6 +177,8 @@ class SwapTrade():
 
     matching_tx.state = "completed"
     matching_tx.txid = sent_txid
+    self.transactions.remove(matching_tx)
+    swap_storage.add_completed(matching_tx)
     return matching_tx
 
   def create_trade_transaction(self, utxo, number):

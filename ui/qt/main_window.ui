@@ -227,6 +227,12 @@
     <addaction name="actionExit"/>
    </widget>
 
+   <widget class="QMenu" name="menuConnection">
+    <property name="title">
+     <string>RPC Connection</string>
+    </property>
+   </widget>
+
    <widget class="QMenu" name="menuSettings">
     <property name="title">
      <string>Settings</string>
@@ -235,6 +241,7 @@
    </widget>
 
    <addaction name="menuFile"/>
+   <addaction name="menuConnection"/>
    <addaction name="menuSettings"/>
   </widget>
 
