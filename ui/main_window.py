@@ -42,7 +42,7 @@ class MainWindow(QMainWindow):
     self.updateTimer.timeout.connect(self.actionRefresh.trigger)
     self.updateTimer.start(10 * 1000)
 
-    self.menu_context = {}
+    self.menu_context = {"type": None, "data": None}
     self.actionRefresh.trigger()
 
 #
@@ -78,7 +78,7 @@ class MainWindow(QMainWindow):
     self.swap_storage.add_swap(trade)
     self.swap_storage.save_data()
     self.update_lists()
-    self.view_order_details(None, swap=trade)
+    self.view_order_details(trade)
 
   def action_remove_trade(self):
     if self.menu_context["type"] != "trade":
@@ -87,7 +87,7 @@ class MainWindow(QMainWindow):
   def action_view_trade(self):
     if self.menu_context["type"] != "trade":
       return
-    self.view_order_details(self.menu_context["data"])
+    self.view_trade_details(self.menu_context["data"])
 
   def action_setup_trade(self):
     if self.menu_context["type"] != "trade":
@@ -212,7 +212,7 @@ class MainWindow(QMainWindow):
       show_error("Error", "Transactions could not be setup for trade.", result, self)
 
   def view_order_details(self, swap):
-    details = OrderDetailsDialog(swap, self.swap_storage, parent=self, dialog_mode="multiple")
+    details = OrderDetailsDialog(swap, self.swap_storage, parent=self, dialog_mode="single")
     return details.exec_()
 
   def update_order_details(self, widget):
