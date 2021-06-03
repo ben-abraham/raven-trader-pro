@@ -1,12 +1,14 @@
 # Raven Trader Pro (EXTREMELY ALPHA!) #
 
-The first and (currently) only integrated application for creating asset buy and sell orders for the ravencoin network via raw transactions. These transactions are signed using `SIGHASH_SINGLE|SIGHASH_ANYONECANPAY` which allows for on-chain swaps to take place with only 2 steps of user interaction, one for each party, and **only a single transaction published to the chain**. The order is fully inspectable at all steps along the way, leading to maximum transparency, while ensuring fast efficient orders can take place.
+The first and (currently) only integrated application for creating asset buy, sell, and trade orders for the ravencoin network via raw transactions. These transactions are signed using `SIGHASH_SINGLE|SIGHASH_ANYONECANPAY` which allows for on-chain swaps to take place with only 2 steps of user interaction, one for each party, and **only a single transaction published to the chain**. The order is fully inspectable at all steps along the way, leading to maximum transparency, while ensuring fast efficient orders can take place.
 
-**Disclaimer: This software is in still in early development, and potentially involves financial transactions, please havily review all transactions to watch for any potential errors**
+**Disclaimer: This software is in still in early development, and potentially involves financial transactions, please heavily review all transactions to watch for any potential errors**
 
 # Screenshot #
-
-![image](https://user-images.githubusercontent.com/793454/118441262-f1163680-b6b6-11eb-9a3e-7181b4eebca2.png)
+## Creating an Order ##
+![image](https://user-images.githubusercontent.com/793454/120568639-42763380-c3e2-11eb-9b01-26f190bb05f9.png)
+## Completing an Order ##
+![image](https://user-images.githubusercontent.com/793454/120569259-8cabe480-c3e3-11eb-81a4-2f76811905c0.png)
 
 Setup:
 - Install Python 3.7 & PIP
@@ -29,21 +31,24 @@ rpcpassword=<password>
 # Features (Roughly in order) #
 
 - [x] Adding "Pro" to the name
-- [x] Create Buy Orders.
-- [x] Create Sell Orders.
-- [x] Complete Buy/Sell Orders.
+- [x] Create Single/Bulk Buy Orders.
+- [x] Create Single/Bulk Sell Orders.
+- [x] Create Single/Bulk Trade Orders (exchange XX of asset A for YY of asset B)
 - [x] Asset List
 - [x] Soft-locking UTXO's (UTXO's setup on the buy/sell screen are locked to prevent use when setting up future UTXO's.)
+- [x] [Optional/Default] Hard-Locking of UTXO's (UTXOs will appear gone and will be unspendable to core wallet.) This prevents accidental order invalidation
 - [x] Soft-Remove Trade Order (Hide, but remember so it can be displayed if executed.)
 - [x] Hard-Remove Trade Order (Invalidate the previous UTXO by using it in a transaction to yourself.)
-- [x] Asset <-> Asset swaps
-- [x] [Optional] Hard-Locking of UTXO's (UTXOs will appear gone and will be unspendable to core wallet.) This prevents accidental order invalidation
-- [ ] Bulk buy/sell order creation. Would require making & locking many UTXO's individually.
+
+## TODO ##
+
 - [ ] System notification on completed trade
-- [ ] Proxy asset signing/reissuing. (Party `A` owns admin asset, Party `B` requests a child asset be minted/reissued/etc under `A`'s admin asset.)
+- [ ] Proxy asset signing/reissuing. (Party `A` owns admin asset, Party `B` requests a child asset be minted/reissued/etc under `A`'s admin asset.) From the creators side, this just looks like a buy order for an asset that doesn't exist yet. 
 - [ ] Proper asset decimal/metadata support.
 - [ ] Available UTXO dialog (with option to manually lock/unlock? UTXO's.)
 - [ ] Settings menu
+- [ ] -- RPC Settings
+- [ ] -- RPC Profiles (save multiple servers)
 - [ ] -- Preferred rvn/asset destination address
 - [ ] -- Previous order history age (remove records after x days)
 - [ ] -- Adjustable fee rate for optionally faster confirmation
@@ -64,14 +69,14 @@ There is a companion repository [raven-trader-server](https://github.com/ben-abr
 
 - [x] **Indexer**: Blocks, transaction count, asset volume, and swap history.
 - [ ] **Indexer**: Asset metadata, full tx history.
-- [ ] **Indexer**: Invalidate orders on execution
+- [x] **Indexer**: Invalidate orders on execution
 - [ ] **Indexer**: Re-org detection and handling
 - [x] **API**: Validate & Store swaps
 - [x] **API**: Get swap history
 - [x] **API**: Get active listings
 - [x] **Web**: 24hr volume, recent swaps, add new swap
 - [ ] **Web**: Asset list & history, omnisearch, documentation/guide
-- [ ] **General**: Asset <-> Asset swap support
+- [x] **General**: Asset <-> Asset swap support
 
 # Process #
 
