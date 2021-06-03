@@ -39,6 +39,7 @@ rpcpassword=<password>
 - [x] [Optional/Default] Hard-Locking of UTXO's (UTXOs will appear gone and will be unspendable to core wallet.) This prevents accidental order invalidation
 - [x] Soft-Remove Trade Order (Hide, but remember so it can be displayed if executed.)
 - [x] Hard-Remove Trade Order (Invalidate the previous UTXO by using it in a transaction to yourself.)
+- [x] Multiple RPC Connections
 
 ## TODO ##
 
@@ -46,9 +47,8 @@ rpcpassword=<password>
 - [ ] Proxy asset signing/reissuing. (Party `A` owns admin asset, Party `B` requests a child asset be minted/reissued/etc under `A`'s admin asset.) From the creators side, this just looks like a buy order for an asset that doesn't exist yet. 
 - [ ] Proper asset decimal/metadata support.
 - [ ] Available UTXO dialog (with option to manually lock/unlock? UTXO's.)
-- [ ] Settings menu
-- [ ] -- RPC Settings
-- [ ] -- RPC Profiles (save multiple servers)
+- [x] Settings menu
+- [x] -- RPC Connections
 - [ ] -- Preferred rvn/asset destination address
 - [ ] -- Previous order history age (remove records after x days)
 - [ ] -- Adjustable fee rate for optionally faster confirmation
