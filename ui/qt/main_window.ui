@@ -1,224 +1,274 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
-  <class>MainWindow</class>
-  <widget class="QMainWindow" name="MainWindow">
-    <property name="geometry">
-      <rect>
-        <x>0</x>
-        <y>0</y>
-        <width>1400</width>
-        <height>800</height>
-      </rect>
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1400</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="mainVertical">
+    <property name="leftMargin">
+     <number>10</number>
     </property>
-    <property name="windowTitle">
-      <string>MainWindow</string>
+    <property name="topMargin">
+     <number>10</number>
     </property>
-    <widget class="QWidget" name="centralwidget">
-      <layout class="QVBoxLayout" name="mainVertical">
+    <property name="rightMargin">
+     <number>10</number>
+    </property>
+    <property name="bottomMargin">
+     <number>10</number>
+    </property>
+    <item>
+     <widget class="QLabel" name="lblBalanceTotal">
+      <property name="text">
+       <string>Total Balance:</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLabel" name="lblBalanceAvailable">
+      <property name="text">
+       <string>Available Balance:</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="orderLayout">
+      <property name="leftMargin">
+       <number>10</number>
+      </property>
+      <property name="topMargin">
+       <number>10</number>
+      </property>
+      <property name="rightMargin">
+       <number>10</number>
+      </property>
+      <property name="bottomMargin">
+       <number>10</number>
+      </property>
+      <item>
+       <layout class="QVBoxLayout" name="assetLayout">
         <property name="leftMargin">
-          <number>10</number>
+         <number>5</number>
         </property>
         <property name="topMargin">
-          <number>10</number>
+         <number>5</number>
         </property>
         <property name="rightMargin">
-          <number>10</number>
+         <number>5</number>
         </property>
         <property name="bottomMargin">
-          <number>10</number>
+         <number>5</number>
         </property>
         <item>
-          <widget class="QLabel" name="lblBalanceTotal">
-            <property name="text">
-              <string>Total Balance:</string>
-            </property>
-          </widget>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>My Assets</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
         </item>
         <item>
-          <widget class="QLabel" name="lblBalanceAvailable">
-            <property name="text">
-              <string>Available Balance:</string>
-            </property>
-          </widget>
+         <widget class="QListWidget" name="lstMyAssets"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="buyOrderLayout">
+        <property name="leftMargin">
+         <number>5</number>
+        </property>
+        <property name="topMargin">
+         <number>5</number>
+        </property>
+        <property name="rightMargin">
+         <number>5</number>
+        </property>
+        <property name="bottomMargin">
+         <number>5</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Active Orders</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
         </item>
         <item>
-          <layout class="QHBoxLayout" name="orderLayout">
-            <property name="leftMargin">
-              <number>10</number>
-            </property>
-            <property name="topMargin">
-              <number>10</number>
-            </property>
-            <property name="rightMargin">
-              <number>10</number>
-            </property>
-            <property name="bottomMargin">
-              <number>10</number>
-            </property>
-            <item>
-              <layout class="QVBoxLayout" name="assetLayout">
-              <property name="leftMargin">
-                <number>5</number>
-              </property>
-              <property name="topMargin">
-                <number>5</number>
-              </property>
-              <property name="rightMargin">
-                <number>5</number>
-              </property>
-              <property name="bottomMargin">
-                <number>5</number>
-              </property>
-              <item>
-                <widget class="QLabel" name="label">
-                <property name="text">
-                  <string>My Assets</string>
-                </property>
-                <property name="alignment">
-                  <set>Qt::AlignCenter</set>
-                </property>
-                </widget>
-              </item>
-              <item>
-                <widget class="QListWidget" name="lstMyAssets"/>
-              </item>
-              </layout>
-            </item>
-
-
-
-            <item>
-              <layout class="QVBoxLayout" name="buyOrderLayout">
-              <property name="leftMargin">
-                <number>5</number>
-              </property>
-              <property name="topMargin">
-                <number>5</number>
-              </property>
-              <property name="rightMargin">
-                <number>5</number>
-              </property>
-              <property name="bottomMargin">
-                <number>5</number>
-              </property>
-              <item>
-                <widget class="QLabel" name="label">
-                <property name="text">
-                  <string>Active Orders</string>
-                </property>
-                <property name="alignment">
-                  <set>Qt::AlignCenter</set>
-                </property>
-                </widget>
-              </item>
-                <item>
-                  <widget class="QPushButton" name="btnNewBuyOrder">
-                    <property name="text">
-                      <string>New Buy Order</string>
-                    </property>
-                  </widget>
-                </item>
-                <item>
-                  <widget class="QPushButton" name="btnNewSellOrder">
-                    <property name="text">
-                      <string>New Sell Order</string>
-                    </property>
-                  </widget>
-                </item>
-                <item>
-                  <widget class="QPushButton" name="btnNewTradeOrder">
-                    <property name="text">
-                      <string>New Trade Order</string>
-                    </property>
-                  </widget>
-                </item>
-              <item>
-                <widget class="QListWidget" name="lstAllOrders"/>
-              </item>
-              </layout>
-            </item>
-
-            <item>
-              <layout class="QVBoxLayout" name="pastOrderLayout">
-                <property name="leftMargin">
-                  <number>5</number>
-                </property>
-                <property name="topMargin">
-                  <number>5</number>
-                </property>
-                <property name="rightMargin">
-                  <number>5</number>
-                </property>
-                <property name="bottomMargin">
-                  <number>5</number>
-                </property>
-                <item>
-                  <widget class="QLabel" name="label">
-                    <property name="text">
-                      <string>Order History</string>
-                    </property>
-                    <property name="alignment">
-                      <set>Qt::AlignCenter</set>
-                    </property>
-                  </widget>
-                </item>
-                <item>
-                  <widget class="QListWidget" name="lstPastOrders"/>
-                </item>
-              </layout>
-            </item>
-            <item>
-              <layout class="QVBoxLayout" name="completedOrderLayout">
-                <property name="leftMargin">
-                  <number>5</number>
-                </property>
-                <property name="topMargin">
-                  <number>5</number>
-                </property>
-                <property name="rightMargin">
-                  <number>5</number>
-                </property>
-                <property name="bottomMargin">
-                  <number>5</number>
-                </property>
-                <item>
-                  <widget class="QLabel" name="label">
-                    <property name="text">
-                      <string>Completed Order History</string>
-                    </property>
-                    <property name="alignment">
-                      <set>Qt::AlignCenter</set>
-                    </property>
-                  </widget>
-                </item>
-                <item>
-                  <widget class="QPushButton" name="btnCompleteOrder">
-                    <property name="text">
-                      <string>Verify/Complete Order</string>
-                    </property>
-                  </widget>
-                </item>
-                <item>
-                  <widget class="QListWidget" name="lstCompletedOrders"/>
-                </item>
-              </layout>
-            </item>
-          </layout>
+         <widget class="QPushButton" name="btnNewBuyOrder">
+          <property name="text">
+           <string>New Buy Order</string>
+          </property>
+         </widget>
         </item>
-      </layout>
-    </widget>
-    <widget class="QMenuBar" name="menubar">
-      <property name="geometry">
-      <rect>
-      <x>0</x>
-      <y>0</y>
-      <width>800</width>
-      <height>26</height>
-      </rect>
-      </property>
-    </widget>
-    <widget class="QStatusBar" name="statusbar"/>
+        <item>
+         <widget class="QPushButton" name="btnNewSellOrder">
+          <property name="text">
+           <string>New Sell Order</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btnNewTradeOrder">
+          <property name="text">
+           <string>New Trade Order</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QListWidget" name="lstAllOrders"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="pastOrderLayout">
+        <property name="leftMargin">
+         <number>5</number>
+        </property>
+        <property name="topMargin">
+         <number>5</number>
+        </property>
+        <property name="rightMargin">
+         <number>5</number>
+        </property>
+        <property name="bottomMargin">
+         <number>5</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Order History</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QListWidget" name="lstPastOrders"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="completedOrderLayout">
+        <property name="leftMargin">
+         <number>5</number>
+        </property>
+        <property name="topMargin">
+         <number>5</number>
+        </property>
+        <property name="rightMargin">
+         <number>5</number>
+        </property>
+        <property name="bottomMargin">
+         <number>5</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Completed Order History</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btnCompleteOrder">
+          <property name="text">
+           <string>Verify/Complete Order</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QListWidget" name="lstCompletedOrders"/>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </item>
+   </layout>
   </widget>
-  <resources/>
-  <connections/>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1400</width>
+     <height>26</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>Raven-Trader</string>
+    </property>
+    <addaction name="actionExit"/>
+   </widget>
+   <widget class="QMenu" name="menuSettings">
+    <property name="title">
+     <string>Settings</string>
+    </property>
+    <widget class="QMenu" name="menuFee_Rate">
+     <property name="title">
+      <string>Fee Rate</string>
+     </property>
+     <addaction name="actionCheapskate_0_01_rvn_KB"/>
+     <addaction name="actionRegular_Robin_0_0125_RVN_kb"/>
+     <addaction name="actionSpeedy_Steve_0_0150_RVN_kb"/>
+     <addaction name="actionTrader_Teddy_0_0175_RVN_kb"/>
+    </widget>
+    <addaction name="menuFee_Rate"/>
+    <addaction name="actionDefault_Destination"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuSettings"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionExit">
+   <property name="text">
+    <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionCheapskate_0_01_rvn_KB">
+   <property name="text">
+    <string>Penny Pincher - 0.0100 RVN/kb</string>
+   </property>
+  </action>
+  <action name="actionRegular_Robin_0_0125_RVN_kb">
+   <property name="text">
+    <string>Regular Robin - 0.0125 RVN/kb</string>
+   </property>
+  </action>
+  <action name="actionSpeedy_Steve_0_0150_RVN_kb">
+   <property name="text">
+    <string>Speedy Steve - 0.01500 RVN/kb</string>
+   </property>
+  </action>
+  <action name="actionTrader_Teddy_0_0175_RVN_kb">
+   <property name="text">
+    <string>Trader Teddy - 0.0175 RVN/kb</string>
+   </property>
+  </action>
+  <action name="actionDefault_Destination">
+   <property name="text">
+    <string>Default Destination</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
 </ui>

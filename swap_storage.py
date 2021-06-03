@@ -14,8 +14,10 @@ from config import *
 
 from swap_transaction import SwapTransaction
 from swap_trade import SwapTrade
+from app_settings import AppSettings
 
 class SwapStorage:
+
   def __init__ (self):
     super()
     self.swaps = []
@@ -25,17 +27,13 @@ class SwapStorage:
     self.on_utxo_spent = None
   
   def on_load(self):
-    self.load_history()
-    self.load_locked()
-    self.load_swaps()
+    self.load_data()
     self.update_wallet()
     self.wallet_unlock_all()
     self.refresh_locks()
 
   def on_close(self):
-    self.save_history()
-    self.save_locked()
-    self.save_swaps()
+    self.save_data()
 
   def call_if_set(self, fn_call, item):
     if fn_call != None:
@@ -44,48 +42,26 @@ class SwapStorage:
 #
 # File I/O
 #
+  def load_data(self):
+    #TODO: Load this uniquely per-wallet to avoid crosstalk
+    loaded_data = load_json(self.get_path(), dict, "Storage")
+    self.swaps = init_list(loaded_data["trades"], SwapTrade) if "trades" in loaded_data else []
+    self.locks = init_list(loaded_data["locks"], dict) if "locks" in loaded_data else []
+    self.history = init_list(loaded_data["history"], SwapTransaction) if "history" in loaded_data else []
 
-  def __load__base(self, path, hook, title):
-    if not os.path.isfile(path):
-      return []
-    fSwap = open(path, mode="r")
-    swapJson = fSwap.read()
-    fSwap.close()
-    data = json.loads(swapJson, object_hook=hook)
-    print("Loaded {} {} records from disk".format(len(data), title))
-    return data
+  def save_data(self):
+    save_payload = {
+      "trades": self.swaps,
+      "locks": self.locks,
+      "history": self.history
+    }
+    #TODO: Save this uniquely per-wallet to avoid crosstalk
+    save_json(self.get_path(), save_payload)
 
-  def __save__base(self, path, data):
-    dataJson = json.dumps(data, default=lambda o: o.__dict__, indent=2)
-    fSwap = open(path, mode="w")
-    fSwap.truncate()
-    fSwap.write(dataJson)
-    fSwap.flush()
-    fSwap.close()
-
-  def load_swaps(self):
-    self.swaps = self.__load__base(SWAP_STORAGE_PATH, SwapTrade, "Swap")
-    return self.swaps
-
-  def save_swaps(self):
-    self.__save__base(SWAP_STORAGE_PATH, self.swaps)
-  
-
-  def load_locked(self):
-    self.locks = self.__load__base(LOCK_STORAGE_PATH, dict, "Lock")
-    return self.locks
-
-  def save_locked(self):
-    self.__save__base(LOCK_STORAGE_PATH, self.locks)
-
-
-  def load_history(self):
-    self.history = self.__load__base(HISTORY_STORGE_PATH, SwapTransaction, "History")
-    return self.history
-
-  def save_history(self):
-    self.__save__base(HISTORY_STORGE_PATH, self.history)
-
+  def get_path(self):
+    base_path = os.path.expanduser(AppSettings.instance.read("data_path"))
+    ensure_directory(base_path)
+    return os.path.join(base_path, "data.json")
 
   def add_swap(self, swap):
     self.swaps.append(swap)
@@ -129,14 +105,14 @@ class SwapStorage:
 
   def wallet_prepare_transaction(self):
     print("Preparing for a transaction")
-    if LOCK_UTXOS_IN_WALLET:
+    if AppSettings.instance.lock_mode():
       print("Locking")
     else:
       print("Non-Locking")
 
   def wallet_completed_transaction(self):
     print("Completed a transaction")
-    if LOCK_UTXOS_IN_WALLET:
+    if AppSettings.instance.lock_mode():
       print("Locking")
     else:
       print("Non-Locking")
@@ -165,7 +141,7 @@ class SwapStorage:
     do_rpc("lockunspent", unlock=not lock, transactions=[{"txid":txid,"vout":vout}])
 
   def load_wallet_locked(self):
-    if LOCK_UTXOS_IN_WALLET:
+    if AppSettings.instance.lock_mode():
       wallet_locks = do_rpc("listlockunspent")
       for lock in wallet_locks:
         txout = do_rpc("gettxout", txid=lock["txid"], n=int(lock["vout"]), include_mempool=True)
@@ -223,7 +199,7 @@ class SwapStorage:
     txout = do_rpc("gettxout", txid=txid, n=vout, include_mempool=True) #True means this will be None when spent in mempool
     utxo = vout_to_utxo(txout, txid, vout)
     self.locks.append(utxo)
-    if LOCK_UTXOS_IN_WALLET:
+    if AppSettings.instance.lock_mode():
       self.wallet_lock_single(txid, vout)
 
   def remove_lock(self, txid=None, vout=None, utxo=None):
@@ -234,14 +210,14 @@ class SwapStorage:
         self.locks.remove(lock)
     print("Unlocking UTXO {}|{}".format(txid, vout))
     #in wallet-lock mode we need to return these to the wallet
-    if LOCK_UTXOS_IN_WALLET:
+    if AppSettings.instance.lock_mode():
       self.wallet_lock_single(txid, vout, lock=False)
 
   def refresh_locks(self):
     for swap in self.swaps:
       for utxo in swap.order_utxos:
         self.add_lock(utxo=utxo)
-    if LOCK_UTXOS_IN_WALLET:
+    if AppSettings.instance.lock_mode():
       self.wallet_lock_all_swaps()
 
   def lock_quantity(self, type):

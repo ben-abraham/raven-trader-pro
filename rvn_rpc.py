@@ -11,10 +11,13 @@ import sys, getopt, argparse, json, time, getpass, os.path
 from util import *
 from config import *
 
+from app_settings import AppSettings
+
 def do_rpc(method, log_error=True, **kwargs):
   req = Request(method, **kwargs)
   try:
-    resp = post(RPC_URL, json=req)
+    url = AppSettings.instance.rpc_url()
+    resp = post(url, json=req)
     if resp.status_code != 200:
       print("==>", end="")
       print(req)
@@ -26,19 +29,24 @@ def do_rpc(method, log_error=True, **kwargs):
     return None
 
 def decode_full(txid):
+  rpc = AppSettings.instance.rpc_details()
+  #TODO: Better way of handling full decode
+  tx_url = "https://rvnt.cryptoscope.io/api/getrawtransaction/?txid={}&decode=1" if rpc["testnet"]\
+    else "https://rvn.cryptoscope.io/api/getrawtransaction/?txid={}&decode=1"
   print("Query Full: {}".format(txid))
-  resp = get(TX_QRY.format(txid))
+  resp = get(tx_url.format(txid))
   if resp.status_code != 200:
     print("Error fetching raw transaction")
   result = json.loads(resp.text)
   return result
 
 def check_unlock(timeout = 10):
+  rpc = AppSettings.instance.rpc_details()
   phrase_test = do_rpc("help", command="walletpassphrase")
   #returns None if no password set
   if(phrase_test.startswith("walletpassphrase")):
     print("Unlocking Wallet for {}s".format(timeout))
-    do_rpc("walletpassphrase", passphrase=RPC_UNLOCK_PHRASE, timeout=timeout)
+    do_rpc("walletpassphrase", passphrase=rpc["unlock"], timeout=timeout)
 
 def dup_transaction(tx):
   new_vin = []

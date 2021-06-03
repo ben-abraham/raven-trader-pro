@@ -140,8 +140,6 @@ class SwapTrade():
 
     raw_tx = do_rpc("createrawtransaction", inputs=setup_vins, outputs=setup_vouts)
 
-    check_unlock()
-
     if self.type == "buy":
       funded_tx = fund_transaction_final(swap_storage, do_rpc, quantity_required, 0, \
         rvn_change_addr, setup_vins, setup_vouts, raw_tx)

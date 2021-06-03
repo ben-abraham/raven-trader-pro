@@ -111,6 +111,9 @@
      <property name="minimum">
       <double>0.00000000</double>
      </property>
+     <property name="maximum">
+      <double>21000000</double>
+     </property>
      <property name="readOnly">
       <bool>true</bool>
      </property>

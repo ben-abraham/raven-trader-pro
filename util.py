@@ -147,6 +147,32 @@ def backup_remove_file(file_path):
   new_name = "old_{}_{}.{}".format(file_path, datetime.datetime.now().strftime('%Y%m%d%H%M%S'), ext) 
   print("Discarding/moving file [{}] into backup location [{}]".format(file_path, new_name))
 
+def ensure_directory(dir):
+  if not os.path.exists(dir):
+    os.makedirs(dir)
+
+def load_json(path, hook, title, default=[]):
+  if not os.path.isfile(path):
+    #print("No {} records.".format(title))
+    return default
+  fSwap = open(path, mode="r")
+  swapJson = fSwap.read()
+  fSwap.close()
+  data = json.loads(swapJson, object_hook=hook)
+  #print("Loaded {} {} records from disk".format(len(data), title))
+  return data
+
+def save_json(path, data):
+  dataJson = json.dumps(data, default=lambda o: o.__dict__, indent=2)
+  fSwap = open(path, mode="w")
+  fSwap.truncate()
+  fSwap.write(dataJson)
+  fSwap.flush()
+  fSwap.close()
+
+def init_list(items, hook):
+  return [hook(item) for item in items]
+
 #
 #Helper Classes
 #

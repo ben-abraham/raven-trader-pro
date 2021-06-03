@@ -19,6 +19,7 @@ from ui.new_order import NewOrderDialog
 
 from swap_transaction import SwapTransaction
 from swap_storage import SwapStorage
+from app_settings import AppSettings
 
 class MainWindow(QMainWindow):
   def __init__(self, storage, *args, **kwargs):
@@ -26,6 +27,7 @@ class MainWindow(QMainWindow):
     uic.loadUi("ui/qt/main_window.ui", self)
     self.setWindowTitle("Raven Trader Pro")
 
+    self.settings = AppSettings.instance
     self.swap_storage = storage
 
     self.btnNewBuyOrder.clicked.connect(self.new_buy_order)
@@ -40,12 +42,8 @@ class MainWindow(QMainWindow):
     self.updateTimer = QTimer(self)
     self.updateTimer.timeout.connect(self.mainWindowUpdate)
     self.updateTimer.start(10 * 1000)
-    #try:
+    
     self.mainWindowUpdate()
-    #except:
-    #  print("ERROR: Initial grid update failed. This is usually due to a new order format json. Backing up and clearing old data.")
-    #  backup_remove_file(SWAP_STORAGE_PATH)
-    #  backup_remove_file(LOCK_STORAGE_PATH)
 
   def open_swap_menu(self, list, list_item, click_position, swap):
     menu = QMenu()
@@ -67,7 +65,7 @@ class MainWindow(QMainWindow):
         print("Updated Order - Old:{:.8g} RVN \t New:{:.8g} RVN".format(swap.unit_price(), new_price))
         swap.set_unit_price(new_price)
         swap.sign_partial()
-        self.swap_storage.save_swaps()
+        self.swap_storage.save_data()
         self.view_order_details(list_item)
         self.update_lists()
     elif action == removeSoftAction:
@@ -79,7 +77,7 @@ class MainWindow(QMainWindow):
         print("Soft Removing Trade Order")
         #TODO: Hide these instead of deleting. Needs to unlock UTXO as well
         self.swap_storage.remove_swap(swap)
-        self.swap_storage.save_swaps()
+        self.swap_storage.save_data()
         self.update_lists()
     elif action == removeHardAction:
       if(show_dialog("Hard Remove Trade Order?", 
@@ -107,7 +105,7 @@ class MainWindow(QMainWindow):
     elif action == removeCompletedAction:
       print("Removing Order")
       self.swap_storage.remove_swap(swap)
-      self.swap_storage.save_swaps()
+      self.swap_storage.save_data()
       self.update_lists()
   
   def open_trade_menu(self, list, list_item, click_position, trade):
@@ -119,9 +117,9 @@ class MainWindow(QMainWindow):
     if action == None:
       return
     elif action == tradeDetailsAction:
-      self.view_order_details(None,trade)
+      self.view_order_details(None, trade)
     elif action == setupTradesAction:
-      self.setup_trades(trade)
+      self.setup_trades(trade, True)
 
   def open_asset_menu(self, list, list_item, click_position, asset):
     menu = QMenu()
@@ -159,6 +157,7 @@ class MainWindow(QMainWindow):
       setup_all = QMessageBox.Yes if trade.missing_trades() == 1 else\
         show_prompt_3("Setup All Trades?", "Would you like to setup all trades right now? If not, you can continue to make them one-by-one.")
       if setup_all != QMessageBox.Cancel:
+        check_unlock()
         try:
           setup_trade = trade.setup_trade(self.swap_storage, max_add=None if setup_all == QMessageBox.Yes else 1)
           if setup_trade:
@@ -183,7 +182,7 @@ class MainWindow(QMainWindow):
   def created_order(self, trade):
     print("New {}: {}".format(trade.type, json.dumps(trade.__dict__)))
     self.swap_storage.add_swap(trade)
-    self.swap_storage.save_swaps()
+    self.swap_storage.save_data()
     self.update_lists()
     self.view_order_details(None, swap=trade)
 
