@@ -58,7 +58,7 @@ class AppSettings:
     ])
 
     self.init_setting("data_path", "~/.raventrader/data")
-    self.init_setting("fee_rate", 0.011)
+    self.init_setting("fee_rate", 0.0125)
     self.init_setting("default_destination", "")
     self.init_setting("locking_mode", True)
     self.init_setting("active_rpc", 0)

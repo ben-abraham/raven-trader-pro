@@ -51,15 +51,19 @@ def do_rpc(method, log_error=True, **kwargs):
     return None
 
 def decode_full(txid):
-  rpc = AppSettings.instance.rpc_details()
-  #TODO: Better way of handling full decode
-  tx_url = "https://rvnt.cryptoscope.io/api/getrawtransaction/?txid={}&decode=1" if rpc["testnet"]\
-    else "https://rvn.cryptoscope.io/api/getrawtransaction/?txid={}&decode=1"
-  print("Query Full: {}".format(txid))
-  resp = get(tx_url.format(txid))
-  if resp.status_code != 200:
-    print("Error fetching raw transaction")
-  result = json.loads(resp.text)
+  local_decode = do_rpc("getrawtransaction", txid=txid, verbose=True)
+  if local_decode:
+    result = local_decode
+  else:
+    rpc = AppSettings.instance.rpc_details()
+    #TODO: Better way of handling full decode
+    tx_url = "https://rvnt.cryptoscope.io/api/getrawtransaction/?txid={}&decode=1" if rpc["testnet"]\
+      else "https://rvn.cryptoscope.io/api/getrawtransaction/?txid={}&decode=1"
+    print("Query Full: {}".format(txid))
+    resp = get(tx_url.format(txid))
+    if resp.status_code != 200:
+      print("Error fetching raw transaction")
+    result = json.loads(resp.text)
   return result
 
 def check_unlock(timeout = 10):
