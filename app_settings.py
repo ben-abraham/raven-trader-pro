@@ -103,6 +103,11 @@ class AppSettings:
   def rpc_unlock(self):
     return self.rpc_details()["unlock"]
 
+  def rpc_set_testnet(self, testnet):
+    rpc_connections = self.read("rpc_connections")
+    rpc_connections[0]["testnet"] = testnet
+    self.write("rpc_connections", rpc_connections)
+
 #
 # Other helper
 #

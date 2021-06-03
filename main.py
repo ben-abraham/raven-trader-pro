@@ -38,6 +38,9 @@ if __name__ == "__main__":
     (chain_info["headers"] - chain_info["blocks"]) < 5
 
   if chain_info and chain_updated:
+    #Determine if we are on testnet, and write back to settings.
+    app_settings.rpc_set_testnet(chain_info["chain"] == "test")
+
     #Then init swap storage
     swap_storage = SwapStorage()
     swap_storage.on_load()
