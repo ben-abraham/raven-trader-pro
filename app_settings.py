@@ -46,6 +46,7 @@ class AppSettings:
   def on_load(self):
     self.load_settings()
     self.load_defaults()
+    self.save_settings() #Save and created defaults
 
   def on_close(self):
     self.save_settings()
