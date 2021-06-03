@@ -203,6 +203,7 @@
     </item>
    </layout>
   </widget>
+
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
@@ -212,27 +213,92 @@
      <height>26</height>
     </rect>
    </property>
+
    <widget class="QMenu" name="menuFile">
     <property name="title">
      <string>Raven-Trader</string>
     </property>
+    <addaction name="actionNewBuy"/>
+    <addaction name="actionNewSell"/>
+    <addaction name="actionNewTrade"/>
+    <addaction name="separator"/>
+    <addaction name="actionCompleteOrder"/>
+    <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
+
    <widget class="QMenu" name="menuSettings">
     <property name="title">
      <string>Settings</string>
     </property>
     <addaction name="actionDefault_Destination"/>
    </widget>
+
    <addaction name="menuFile"/>
    <addaction name="menuSettings"/>
   </widget>
+
   <widget class="QStatusBar" name="statusbar"/>
+  
   <action name="actionExit">
    <property name="text">
     <string>Exit</string>
    </property>
   </action>
+  
+  <action name="actionNewBuy">
+   <property name="text">
+    <string>New Buy Order</string>
+   </property>
+  </action>
+  <action name="actionNewSell">
+   <property name="text">
+    <string>New Sell Order</string>
+   </property>
+  </action>
+  <action name="actionNewTrade">
+   <property name="text">
+    <string>New Trade Order</string>
+   </property>
+  </action>
+  <action name="actionCompleteOrder">
+   <property name="text">
+    <string>Complete Order</string>
+   </property>
+  </action>
+  
+  <action name="actionRemoveTrade">
+   <property name="text">
+    <string>Remove Trade</string>
+   </property>
+  </action>
+  <action name="actionRemoveOrder">
+   <property name="text">
+    <string>Remove Order</string>
+   </property>
+  </action>
+  <action name="actionViewTrade">
+   <property name="text">
+    <string>View Trade Details</string>
+   </property>
+  </action>
+  <action name="actionViewOrder">
+   <property name="text">
+    <string>View Order Details</string>
+   </property>
+  </action>
+  <action name="actionSetupTrade">
+   <property name="text">
+    <string>Setup Trade Order(s)</string>
+   </property>
+  </action>
+
+  <action name="actionRefresh">
+   <property name="text">
+    <string>Refresh from Wallet</string>
+   </property>
+  </action>
+
   <action name="actionDefault_Destination">
    <property name="text">
     <string>Default Destination</string>
@@ -240,5 +306,80 @@
   </action>
  </widget>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>btnNewBuyOrder</sender>
+   <signal>clicked()</signal>
+   <receiver>actionNewBuy</receiver>
+   <slot>trigger()</slot>
+  </connection>
+  <connection>
+   <sender>btnNewSellOrder</sender>
+   <signal>clicked()</signal>
+   <receiver>actionNewSell</receiver>
+   <slot>trigger()</slot>
+  </connection>
+  <connection>
+   <sender>btnNewTradeOrder</sender>
+   <signal>clicked()</signal>
+   <receiver>actionNewTrade</receiver>
+   <slot>trigger()</slot>
+  </connection>
+  <connection>
+   <sender>btnCompleteOrder</sender>
+   <signal>clicked()</signal>
+   <receiver>actionCompleteOrder</receiver>
+   <slot>trigger()</slot>
+  </connection>
+  
+  <connection>
+   <sender>actionRemoveTrade</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>action_remove_trade()</slot>
+  </connection>
+  <connection>
+   <sender>actionRemoveOrder</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>action_remove_order()</slot>
+  </connection>
+  <connection>
+   <sender>actionViewTrade</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>action_view_trade()</slot>
+  </connection>
+  <connection>
+   <sender>actionViewOrder</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>action_view_order()</slot>
+  </connection>
+  <connection>
+   <sender>actionSetupTrade</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>action_setup_trade()</slot>
+  </connection>
+  
+  <connection>
+   <sender>lstAllOrders</sender>
+   <signal>itemDoubleClicked(QListWidgetItem*)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>trade_double_clicked()</slot>
+  </connection>
+  <connection>
+   <sender>lstPastOrders</sender>
+   <signal>itemDoubleClicked(QListWidgetItem*)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>order_double_clicked()</slot>
+  </connection>
+  <connection>
+   <sender>lstCompletedOrders</sender>
+   <signal>itemDoubleClicked(QListWidgetItem*)</signal>
+   <receiver>MainWindow</receiver>
+   <slot>order_double_clicked()</slot>
+  </connection>
+ </connections>
 </ui>

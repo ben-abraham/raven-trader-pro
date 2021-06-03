@@ -10,6 +10,8 @@ from PyQt5 import uic
 import sys, getopt, argparse, json, time, getpass, os.path, datetime, shutil
 from config import *
 
+from app_settings import AppSettings
+
 #
 #Chain helper functions
 #
@@ -107,6 +109,9 @@ def vout_to_utxo(vout, txid, n):
       return {"txid": txid, "vout": n, "type": "rvn", "amount": vout["value"]}
   else:
     return {"txid": txid, "vout": n, "type": "unknown"}
+
+def make_prefill(asset, quantity=1, unit_price=1):
+  return { "asset": asset["name"], "quantity": quantity, "unit_price": unit_price }
 
 #
 #Helper function

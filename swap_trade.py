@@ -17,6 +17,9 @@ from swap_transaction import SwapTransaction
 class SwapTrade():
   def __init__(self, dict):
     vars(self).update(dict)
+    #Recreate types if we load simply from json
+    if self.transactions:
+      self.transactions = [SwapTransaction(tx) for tx in self.transactions]
 
   def total_price(self):
     #Don't need to multiply 

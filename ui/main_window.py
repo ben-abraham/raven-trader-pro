@@ -30,126 +30,123 @@ class MainWindow(QMainWindow):
     self.settings = AppSettings.instance
     self.swap_storage = storage
 
-    self.btnNewBuyOrder.clicked.connect(self.new_buy_order)
-    self.btnNewSellOrder.clicked.connect(self.new_sell_order)
-    self.btnNewTradeOrder.clicked.connect(self.new_trade_order)
-    self.btnCompleteOrder.clicked.connect(self.complete_order)
+    self.actionExit.triggered.connect(self.close)
+    self.actionRefresh.triggered.connect(self.refresh_main_window)
 
-    self.lstAllOrders.itemDoubleClicked.connect(self.view_order_details)
-    self.lstPastOrders.itemDoubleClicked.connect(self.view_order_details)
-    self.lstCompletedOrders.itemDoubleClicked.connect(self.view_order_details)
+    self.actionNewBuy.triggered.connect(self.new_buy_order)
+    self.actionNewSell.triggered.connect(self.new_sell_order)
+    self.actionNewTrade.triggered.connect(self.new_trade_order)
+    self.actionCompleteOrder.triggered.connect(self.complete_order)
 
     self.updateTimer = QTimer(self)
-    self.updateTimer.timeout.connect(self.mainWindowUpdate)
+    self.updateTimer.timeout.connect(self.actionRefresh.trigger)
     self.updateTimer.start(10 * 1000)
-    
-    self.mainWindowUpdate()
 
-  def open_swap_menu(self, list, list_item, click_position, swap):
-    menu = QMenu()
-    widget_inner = list.itemWidget(list_item)
-    deatilsAction = menu.addAction("View Details")
-    updateAction = menu.addAction("Update Price") if swap.state == "new" else None
-    removeSoftAction = menu.addAction("Remove Order - Soft") if swap.state == "new" else None
-    removeHardAction = menu.addAction("Remove Order - Hard") if swap.state == "new" else None
-    removeCompletedAction = menu.addAction("Remove Order") if swap.state == "completed" else None
-    action = menu.exec_(widget_inner.mapToGlobal(click_position))
-    if action == None:
-      return
-    elif action == deatilsAction:
-      print("View Details")
-      self.view_order_details(list_item)
-    elif action == updateAction:
-      (response, new_price) = self.update_order_details(list_item)
-      if response:
-        print("Updated Order - Old:{:.8g} RVN \t New:{:.8g} RVN".format(swap.unit_price(), new_price))
-        swap.set_unit_price(new_price)
-        swap.sign_partial()
-        self.swap_storage.save_data()
-        self.view_order_details(list_item)
-        self.update_lists()
-    elif action == removeSoftAction:
-      if(show_dialog("Soft Remove Trade Order?", 
-      "Would you like to soft-remove this trade order?\r\n"+
-      "A created order can be executed at any time once it has been announced, as long as the original UTXO remains valid.\r\n"+
-      "A soft-remove simply stops locking the UTXO and ignores it in software (anyone who recieved the order can still complete it).\r\n"+
-      "A hard remove will invalidate the previously-used UTXO by sending yourself a transaction using it.")):
-        print("Soft Removing Trade Order")
-        #TODO: Hide these instead of deleting. Needs to unlock UTXO as well
-        self.swap_storage.remove_swap(swap)
-        self.swap_storage.save_data()
-        self.update_lists()
-    elif action == removeHardAction:
-      if(show_dialog("Hard Remove Trade Order?", 
-      "Would you like to hard-remove this trade order?\r\n"+
-      "A created order can be executed at any time once it has been announced, as long as the original UTXO remains valid.\r\n"+
-      "A soft-remove simply stops locking the UTXO and ignores it in software (anyone who recieved the order can still complete it).\r\n"+
-      "A hard remove will invalidate the previously-used UTXO by sending yourself a transaction using it.")):
-        print("Hard Remove Trade Order")
-          
-        setup_utxo = swap.consutrct_invalidate_tx(self.swap_storage)
-        preview_dialog = PreviewTransactionDialog(swap, setup_utxo["hex"], self.swap_storage, preview_title="Invalidate Order", parent=self)
-        if preview_dialog.exec_():
-          print("Send Invalidate!")
-          sent_txid = do_rpc("sendrawtransaction", hexstring=setup_utxo["hex"])
-          update_response = show_prompt("Update Price?", "Sent! TXID: {}".format(sent_txid), "Would you like to create a new order against the invalidated UTXO?", parent=self)
-          if update_response == QMessageBox.Yes:
-            if swap.type == "buy":
-              self.new_buy_order({"asset": swap.asset(), "quantity": swap.out_quantity, "unit_price": swap.unit_price(), "waiting": sent_txid})
-            elif swap.type == "sell":
-              self.new_sell_order({"asset": swap.asset(), "quantity": swap.out_quantity, "unit_price": swap.unit_price(), "waiting": sent_txid})
-            elif swap.type == "trade":
-              self.new_trade_order(swap)
-        else:
-          print("Dont Invalidate!")
-    elif action == removeCompletedAction:
-      print("Removing Order")
-      self.swap_storage.remove_swap(swap)
-      self.swap_storage.save_data()
-      self.update_lists()
-  
-  def open_trade_menu(self, list, list_item, click_position, trade):
-    menu = QMenu()
-    widget_inner = list.itemWidget(list_item)
-    setupTradesAction = menu.addAction("Setup Trade") if trade.missing_trades() > 0 else None
-    tradeDetailsAction = menu.addAction("Trade Details") if len(trade.order_utxos) > 0 else None
-    action = menu.exec_(widget_inner.mapToGlobal(click_position))
-    if action == None:
-      return
-    elif action == tradeDetailsAction:
-      self.view_order_details(None, trade)
-    elif action == setupTradesAction:
-      self.setup_trades(trade, True)
+    self.menu_context = {}
+    self.actionRefresh.trigger()
 
-  def open_asset_menu(self, list, list_item, click_position, asset):
-    menu = QMenu()
-    widget_inner = list.itemWidget(list_item)
-    sellAction = menu.addAction("Sell")
-    buyAction = menu.addAction("Buy")
-    action = menu.exec_(widget_inner.mapToGlobal(click_position))
-    if action == sellAction:
-      self.new_sell_order({"asset": asset["name"], "quantity": 1, "unit_price": 1})
-    elif action == buyAction:
-      self.new_buy_order({"asset": asset["name"], "quantity": 1, "unit_price": 1})
+#
+# Action callbacks
+#
 
   def new_buy_order(self, prefill=None):
+    if self.menu_context["type"] == "asset":
+      prefill = make_prefill(self.menu_context["data"])
     buy_dialog = NewOrderDialog("buy", self.swap_storage, prefill=prefill, parent=self)
     if(buy_dialog.exec_()):
       buy_swap = buy_dialog.build_trade()
       self.created_order(buy_swap)
 
   def new_sell_order(self, prefill=None):
+    if self.menu_context["type"] == "asset":
+      prefill = make_prefill(self.menu_context["data"])
     sell_dialog = NewOrderDialog("sell", self.swap_storage, prefill=prefill, parent=self)
     if(sell_dialog.exec_()):
       sell_swap = sell_dialog.build_trade()
       self.created_order(sell_swap)
 
-  def new_trade_order(self, prefill_swap=None):
-    prefill = None
+  def new_trade_order(self, prefill=None):
+    if self.menu_context["type"] == "asset":
+      prefill = make_prefill(self.menu_context["data"])
     trade_dialog = NewTradeDialog(self.swap_storage, prefill=prefill, parent=self)
     if(trade_dialog.exec_()):
       trade_swap = trade_dialog.build_trade()
       self.created_order(trade_swap)
+
+  def created_order(self, trade):
+    print("New {}: {}".format(trade.type, json.dumps(trade.__dict__)))
+    self.swap_storage.add_swap(trade)
+    self.swap_storage.save_data()
+    self.update_lists()
+    self.view_order_details(None, swap=trade)
+
+  def action_remove_trade(self):
+    if self.menu_context["type"] != "trade":
+      return
+
+  def action_view_trade(self):
+    if self.menu_context["type"] != "trade":
+      return
+    self.view_order_details(self.menu_context["data"])
+
+  def action_setup_trade(self):
+    if self.menu_context["type"] != "trade":
+      return
+    self.setup_trades(self.menu_context["data"], true)
+
+  def action_remove_order(self):
+    if self.menu_context["type"] != "order":
+      return
+
+  def action_view_order(self):
+    if self.menu_context["type"] != "order":
+      return
+    self.view_trade_details(self.menu_context["data"])
+    
+  def trade_double_clicked(self, row_widget):
+    list = row_widget.listWidget()
+    row = list.itemWidget(row_widget)
+    self.menu_context = { "type": "trade", "data": row.get_data()}
+    self.action_view_trade()
+    
+  def order_double_clicked(self, row_widget):
+    list = row_widget.listWidget()
+    row = list.itemWidget(row_widget)
+    self.menu_context = { "type": "order", "data": row.get_data()}
+    self.action_view_order()
+
+#
+# Context Menus
+#
+
+  def open_asset_menu(self, list, list_item, click_position, asset):
+    menu = QMenu()
+    widget_inner = list.itemWidget(list_item)
+    menu.addAction(self.actionNewBuy)
+    menu.addAction(self.actionNewSell)
+    menu.addAction(self.actionNewTrade)
+    self.menu_context = { "type": "asset", "data": asset }
+    action = menu.exec_(widget_inner.mapToGlobal(click_position))
+    
+  def open_trade_menu(self, list, list_item, click_position, trade):
+    menu = QMenu()
+    widget_inner = list.itemWidget(list_item)
+    menu.addAction(self.actionSetupTrade) if trade.missing_trades() > 0 else None
+    menu.addAction(self.actionViewTrade) if len(trade.order_utxos) > 0 else None
+    self.menu_context = { "type": "trade", "data": trade }
+    action = menu.exec_(widget_inner.mapToGlobal(click_position))
+
+  def open_order_menu(self, list, list_item, click_position, swap):
+    menu = QMenu()
+    widget_inner = list.itemWidget(list_item)
+    menu.addAction(self.actionViewOrder)
+    menu.addAction(self.actionRemoveOrder)
+    self.menu_context = { "type": "order", "data": swap }
+    menu.exec_(widget_inner.mapToGlobal(click_position))
+
+#
+# Sub-Dialogs
+#
 
   def setup_trades(self, trade, force_create):
     filled = trade.attempt_fill_trade_pool(self.swap_storage)
@@ -178,14 +175,6 @@ class MainWindow(QMainWindow):
     else: #Pool has been filled
       return (True, None)
 
-
-  def created_order(self, trade):
-    print("New {}: {}".format(trade.type, json.dumps(trade.__dict__)))
-    self.swap_storage.add_swap(trade)
-    self.swap_storage.save_data()
-    self.update_lists()
-    self.view_order_details(None, swap=trade)
-
   def complete_order(self):
     order_dialog = OrderDetailsDialog(None, self.swap_storage, parent=self, dialog_mode="complete")
     if(order_dialog.exec_()):
@@ -210,33 +199,33 @@ class MainWindow(QMainWindow):
       return submitted_txid
     return None
 
-  def view_order_details(self, widget, swap=None, force_order=True):
-    if not swap:
-      list = widget.listWidget()
-      swap_row = list.itemWidget(widget)
-      swap = swap_row.get_data()
-    (success, result) = self.setup_trades(swap, force_order)
+  def view_trade_details(self, trade, force_order=True):
+    (success, result) = self.setup_trades(trade, force_order)
     #TODO: Wait for TXID if one was sent out here
     if success:
       if result == None:
-        details = OrderDetailsDialog(swap, self.swap_storage, parent=self, dialog_mode="multiple")
+        details = OrderDetailsDialog(trade, self.swap_storage, parent=self, dialog_mode="multiple")
         return details.exec_()
       elif result:
         show_dialog("Sent", "Transaction has been submitted. Please try again soon.", result, self)
     elif result:
       show_error("Error", "Transactions could not be setup for trade.", result, self)
 
+  def view_order_details(self, swap):
+    details = OrderDetailsDialog(swap, self.swap_storage, parent=self, dialog_mode="multiple")
+    return details.exec_()
+
   def update_order_details(self, widget):
     list = widget.listWidget()
     swap_row = list.itemWidget(widget)
     details = OrderDetailsDialog(swap_row.get_data(), self.swap_storage, parent=self, dialog_mode="update")
     return (details.exec_(), details.spnUpdateUnitPrice.value())
-    
-  def clear_list(self, list):
-    for row in range(0, list.count()):
-      list.takeItem(0) #keep removing idx 0
 
-  def mainWindowUpdate(self):
+#
+# Updating
+#
+
+  def refresh_main_window(self):
     self.swap_storage.update_wallet()
 
     avail_balance = self.swap_storage.available_balance
@@ -258,7 +247,7 @@ class MainWindow(QMainWindow):
     self.add_udpate_items(list, asset_list, lambda x: x["name"], QTwoLineRowWidget.from_asset, self.open_asset_menu)
 
   def add_update_swap_items(self, list, swap_list):
-    self.add_udpate_items(list, swap_list, lambda x: x.utxo, QTwoLineRowWidget.from_swap, self.open_swap_menu)
+    self.add_udpate_items(list, swap_list, lambda x: x.utxo, QTwoLineRowWidget.from_swap, self.open_order_menu)
 
   def add_update_trade_items(self, list, swap_list):
     self.add_udpate_items(list, swap_list, \
