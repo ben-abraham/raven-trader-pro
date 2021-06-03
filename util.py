@@ -16,13 +16,10 @@ from config import *
 
 #2 hex chars = 1 byte, 0.01 RVN/kb feerate
 def calculate_fee(transaction_hex):
-  num_kb = len(transaction_hex) / 2 / 1024
-  fee = 0.0125 * num_kb
-  #print("{} bytes => {} RVN".format(num_kb * 1024, fee))
-  return fee
+  return calculated_fee_from_size(len(transaction_hex) / 2)
 
 def calculated_fee_from_size(size):
-  return 0.0125 * (size / 1024)
+  return AppSettings.instance.fee_rate() * (size / 1024)
 
 #TransactionOverhead         = 12             // 4 version, 2 segwit flag, 1 vin, 1 vout, 4 lock time
 #InputSize                   = 148            // 4 prev index, 32 prev hash, 4 sequence, 1 script size, ~107 script witness

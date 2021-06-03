@@ -222,16 +222,6 @@
     <property name="title">
      <string>Settings</string>
     </property>
-    <widget class="QMenu" name="menuFee_Rate">
-     <property name="title">
-      <string>Fee Rate</string>
-     </property>
-     <addaction name="actionCheapskate_0_01_rvn_KB"/>
-     <addaction name="actionRegular_Robin_0_0125_RVN_kb"/>
-     <addaction name="actionSpeedy_Steve_0_0150_RVN_kb"/>
-     <addaction name="actionTrader_Teddy_0_0175_RVN_kb"/>
-    </widget>
-    <addaction name="menuFee_Rate"/>
     <addaction name="actionDefault_Destination"/>
    </widget>
    <addaction name="menuFile"/>
@@ -241,26 +231,6 @@
   <action name="actionExit">
    <property name="text">
     <string>Exit</string>
-   </property>
-  </action>
-  <action name="actionCheapskate_0_01_rvn_KB">
-   <property name="text">
-    <string>Penny Pincher - 0.0100 RVN/kb</string>
-   </property>
-  </action>
-  <action name="actionRegular_Robin_0_0125_RVN_kb">
-   <property name="text">
-    <string>Regular Robin - 0.0125 RVN/kb</string>
-   </property>
-  </action>
-  <action name="actionSpeedy_Steve_0_0150_RVN_kb">
-   <property name="text">
-    <string>Speedy Steve - 0.01500 RVN/kb</string>
-   </property>
-  </action>
-  <action name="actionTrader_Teddy_0_0175_RVN_kb">
-   <property name="text">
-    <string>Trader Teddy - 0.0175 RVN/kb</string>
    </property>
   </action>
   <action name="actionDefault_Destination">

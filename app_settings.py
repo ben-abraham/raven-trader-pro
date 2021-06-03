@@ -85,3 +85,6 @@ class AppSettings:
 
   def lock_mode(self):
     return self.read_setting("locking_mode", True)
+
+  def fee_rate(self):
+    return self.read_setting("fee_rate")
