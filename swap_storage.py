@@ -69,6 +69,8 @@ class SwapStorage:
 
   def remove_swap(self, swap_trade):
     self.swaps.remove(swap_trade)
+    for utxo in swap_trade.order_utxos:
+      self.remove_lock(utxo=utxo)
 
   def add_completed(self, swap_transaction):
     self.history.append(swap_transaction)

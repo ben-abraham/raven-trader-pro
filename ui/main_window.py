@@ -75,11 +75,11 @@ class MainWindow(QMainWindow):
     self.update_lists()
     self.view_trade_details(trade)
 
-  def action_remove_trade(self, confirm=True):
+  def action_remove_trade(self, _, confirm=True):
     if self.menu_context["type"] != "trade":
       return
     if confirm:
-      if not show_prompt("Remove Trade?", "Are you sure you want to remove this trade?"):
+      if show_prompt("Remove Trade?", "Are you sure you want to remove this trade?") == QMessageBox.No:
         return
     self.swap_storage.remove_swap(self.menu_context["data"])
     self.actionRefresh.trigger()
@@ -95,9 +95,12 @@ class MainWindow(QMainWindow):
     self.setup_trades(self.menu_context["data"], True)
     self.actionRefresh.trigger()
 
-  def action_remove_order(self):
+  def action_remove_order(self, _, confirm=True):
     if self.menu_context["type"] != "order":
       return
+    if confirm:
+      if show_prompt("Remove Trade?", "Are you sure you want to remove this trade?") == QMessageBox.No:
+        return
     self.swap_storage.remove_completed(self.menu_context["data"])
     self.actionRefresh.trigger()
 
