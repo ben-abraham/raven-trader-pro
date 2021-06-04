@@ -22,6 +22,8 @@ class SwapStorage:
     self.swaps = []
     self.locks = []
     self.history = []
+    self.waiting = [] #Waiting on confirmation
+    self.trigger_cache = []
     self.on_swap_executed = None
     self.on_utxo_spent = None
   
@@ -131,6 +133,32 @@ class SwapStorage:
     else:
       print("Non-Locking")
 
+  def num_waiting(self):
+    return len(self.waiting)
+
+  def add_waiting(self, txid, fnOnSeen=None, fnOnConfirm=None):
+    print("Waiting on txid: {}".format(txid))
+    self.waiting.append((txid, fnOnSeen, fnOnConfirm))
+
+  def check_waiting(self):
+    for waiting in self.waiting:
+      (txid, seen, confirm) = waiting
+      tx_data = do_rpc("getrawtransaction", txid=txid, verbose=True)
+      if not tx_data:
+        continue
+      if txid not in self.trigger_cache:
+        print("Waiting txid {} confirmed in mempool.".format(txid))
+        self.trigger_cache.append(txid)
+        if seen:
+          seen(tx_data)
+      #TODO: Adjustable confirmations
+      elif "confirmations" in tx_data and tx_data["confirmations"] >= 1 and txid in self.trigger_cache:
+        print("Waiting txid {} fully confirmed.".format(txid))
+        self.trigger_cache.remove(txid)
+        self.waiting.remove(waiting)
+        if confirm:
+          confirm(tx_data)
+      
   def wallet_lock_all_swaps(self):
     #first unlock everything
     self.wallet_unlock_all()
@@ -180,6 +208,7 @@ class SwapStorage:
     self.available_balance = (0,0,0)
 
   def update_wallet(self):
+    self.check_waiting()
     #Locked UTXO's are excluded from the list command
     self.utxos = do_rpc("listunspent")
       

@@ -35,7 +35,7 @@ class MainWindow(QMainWindow):
 
     self.updateTimer = QTimer(self)
     self.updateTimer.timeout.connect(self.actionRefresh.trigger)
-    self.updateTimer.start(10 * 1000)
+    self.updateTimer.start(self.settings.read("update_interval"))
 
     self.menu_context = {"type": None, "data": None}
     self.actionRefresh.trigger()
@@ -178,6 +178,7 @@ class MainWindow(QMainWindow):
       if setup_success and setup_result:
         setup_txid = self.preview_complete(setup_result, "Setup Trade Order")
         if setup_txid:
+          self.swap_storage.add_waiting(setup_txid)
           return (True, setup_txid)
           #Wait for confirmation, then run this again.
         elif has_items and not force_create:
@@ -205,8 +206,9 @@ class MainWindow(QMainWindow):
           partial_swap.state = "completed" #TODO: Add waiting on confirmation phase
           #Add a completed swap to the list.
           #it's internally tracked from an external source
+          self.swap_storage.add_waiting(sent_txid)
           self.swap_storage.add_completed(partial_swap)
-          self.update_lists()
+          self.actionRefresh.trigger()
   
   def preview_complete(self, raw_tx, message, swap=None):
     preview_dialog = PreviewTransactionDialog(swap, raw_tx, self.swap_storage, preview_title=message, parent=self)
@@ -220,6 +222,7 @@ class MainWindow(QMainWindow):
     (success, result) = self.setup_trades(trade, force_order)
     #TODO: Wait for TXID if one was sent out here
     if success:
+      self.actionRefresh.trigger()
       if result == None:
         details = OrderDetailsDialog(trade, self.swap_storage, parent=self, dialog_mode="multiple")
         return details.exec_()
@@ -261,6 +264,16 @@ class MainWindow(QMainWindow):
 # Updating
 #
 
+  def update_status(self):
+    num_waiting = self.swap_storage.num_waiting()
+    if num_waiting == 0:
+      self.statusBar().clearMessage()
+    elif num_waiting == 1:
+      first_waiting = self.swap_storage.waiting[0]
+      self.statusBar().showMessage("Waiting on 1 TX: {}".format(first_waiting[0]))
+    else:
+      self.statusBar().showMessage("Waiting on {} TXs".format(num_waiting))
+
   def refresh_main_window(self):
     self.swap_storage.update_wallet()
 
@@ -270,6 +283,7 @@ class MainWindow(QMainWindow):
     self.lblBalanceTotal.setText("Total Balance: {:.8g} RVN [{:.8g} Assets]".format(total_balance[0], total_balance[2]))
     self.lblBalanceAvailable.setText("Total Available: {:.8g} RVN [{:.8g} Assets]".format(avail_balance[0], avail_balance[2]))
     self.update_lists()
+    self.update_status()
 
   def update_dynamic_menus(self):
     self.menuConnection.clear()

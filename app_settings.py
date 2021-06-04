@@ -62,6 +62,7 @@ class AppSettings:
     self.init_setting("default_destination", "")
     self.init_setting("locking_mode", True)
     self.init_setting("active_rpc", 0)
+    self.init_setting("update_interval", 5000)
 
 #
 # File I/O
