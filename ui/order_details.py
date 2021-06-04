@@ -117,7 +117,7 @@ class OrderDetailsDialog(QDialog):
 
     if asset_needed:
       if asset_needed not in self.swap_storage.my_asset_names:
-        return "You don't own the asset [{}].".format(asset_name)
+        return "You don't own the asset [{}].".format(asset_needed)
       if asset_qty > self.swap_storage.assets[asset_needed]["balance"]:
         return "You don't own enough of that asset. Own {}, Need {}".format(self.swap_storage.assets[asset_needed]["balance"], asset_qty)
     if rvn_qty > self.swap_storage.rvn_balance():
