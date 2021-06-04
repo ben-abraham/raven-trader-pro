@@ -13,9 +13,11 @@ from rvn_rpc import *
 
 from ui.preview_order import PreviewTransactionDialog
 from ui.order_details import OrderDetailsDialog
+from ui.server_orders import ServerOrdersDialog
 from ui.new_trade import NewTradeDialog
 from ui.new_order import NewOrderDialog
 
+from server_connection import ServerConnection
 from swap_transaction import SwapTransaction
 from swap_storage import SwapStorage
 from app_settings import AppSettings
@@ -28,6 +30,7 @@ class MainWindow(QMainWindow):
 
     self.settings = AppSettings.instance
     self.swap_storage = storage
+    self.server = ServerConnection()
 
     self.update_dynamic_menus()
 
@@ -124,6 +127,15 @@ class MainWindow(QMainWindow):
   def action_reset_locks(self):
     self.swap_storage.refresh_locks(clear=True)
     self.actionRefresh.trigger()
+
+  def server_list_orders(self):
+    server_diag = ServerOrdersDialog(self.server, parent=self)
+    server_diag.exec_()
+
+  def server_post_trade(self):
+    if self.menu_context["type"] != "trade":
+      return
+    print("post trade!")
 
 #
 # Context Menus
@@ -287,6 +299,11 @@ class MainWindow(QMainWindow):
 
   def update_dynamic_menus(self):
     self.menuConnection.clear()
+
+    if self.settings.server_enabled():
+      server_menu = self.menuBar().addMenu("Trade Server")
+      server_menu.addAction(self.actionServerListOrderse)
+      server_menu.addAction(self.actionServerPostOrder)
 
     for index, rpc in enumerate(self.settings.read("rpc_connections")):
       rpc_action = QAction(rpc["title"], self, checkable=True)

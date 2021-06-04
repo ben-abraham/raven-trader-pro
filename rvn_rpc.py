@@ -41,9 +41,9 @@ def do_rpc(method, log_error=True, **kwargs):
     url = AppSettings.instance.rpc_url()
     resp = post(url, json=req)
     if resp.status_code != 200:
-      print("==>", end="")
+      print("RPC ==>", end="")
       print(req)
-      print("<== ERR:", end="")
+      print("RPC <== ERR:", end="")
       print(resp.text)
     return json.loads(resp.text)["result"]
   except:

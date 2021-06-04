@@ -300,6 +300,17 @@
     <string>Setup Trade Order(s)</string>
    </property>
   </action>
+  
+  <action name="actionServerListOrderse">
+   <property name="text">
+    <string>List Server Trade Orders</string>
+   </property>
+  </action>
+  <action name="actionServerPostOrder">
+   <property name="text">
+    <string>Post Trade to Server</string>
+   </property>
+  </action>
 
   <action name="actionRefresh">
    <property name="text">
@@ -343,6 +354,19 @@
    <signal>clicked()</signal>
    <receiver>actionCompleteOrder</receiver>
    <slot>trigger()</slot>
+  </connection>
+  
+  <connection>
+   <sender>actionServerListOrderse</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>server_list_orders()</slot>
+  </connection>
+  <connection>
+   <sender>actionServerPostOrder</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>server_post_trade()</slot>
   </connection>
   
   <connection>

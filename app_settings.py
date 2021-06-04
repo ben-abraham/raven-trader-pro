@@ -124,6 +124,9 @@ class AppSettings:
 # Other helper
 #
 
+  def server_enabled(self):
+    return True if self.read_setting("server_url") else False
+
   def lock_mode(self):
     return self.read_setting("locking_mode", True)
 
