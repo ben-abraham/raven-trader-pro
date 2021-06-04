@@ -14,7 +14,7 @@ from rvn_rpc import *
 from swap_transaction import SwapTransaction
 
 class OrderDetailsDialog(QDialog):
-  def __init__(self, swap, swap_storage, parent=None, dialog_mode="details", **kwargs):
+  def __init__(self, swap, swap_storage, parent=None, raw_prefill=None, dialog_mode="details", **kwargs):
     super().__init__(parent, **kwargs)
     uic.loadUi("ui/qt/order_details.ui", self)
     self.swap = swap
@@ -39,10 +39,11 @@ class OrderDetailsDialog(QDialog):
     elif self.dialog_mode == "complete":
       self.setWindowTitle("Preview Completion [1/2]")
       #Allow user to edit and register listener for changes
-      self.txtSigned.setReadOnly(False)
-      self.txtSigned.textChanged.connect(self.raw_tx_changed)
       self.buttonBox.removeButton(self.buttonBox.button(QDialogButtonBox.Ok))
       self.confirm_button = self.buttonBox.addButton("Confirm", QDialogButtonBox.AcceptRole)
+      self.txtSigned.setReadOnly(False)
+      self.txtSigned.textChanged.connect(self.raw_tx_changed)
+      self.txtSigned.setText(raw_prefill) #This happens last as it will trigger the update event
     elif self.dialog_mode == "update":
       self.setWindowTitle("Order Price")
       self.spnUpdateUnitPrice.setReadOnly(False)

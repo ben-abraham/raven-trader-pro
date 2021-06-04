@@ -31,9 +31,9 @@ class ServerConnection:
   def exec_url(self, method, url, **kwargs):
     req = dict(kwargs)
     try:
-      resp = method(url, params=req) if method == get else method(url, json=req)
+      resp = get(url, params=req) if method == "GET" else post(url, json=req)
       if resp.status_code != 200:
-        print("RTServer ==> GET {} {}".format(url, req))
+        print("RTServer ==> {} {} {}".format(method, url, req))
         print("RTServer <== {}".format(resp.text))
       j_resp = json.loads(resp.text)
       if "error" in j_resp and j_resp["error"]:
@@ -46,10 +46,10 @@ class ServerConnection:
       return None
 
   def do_get(self, url, **kwargs):
-    return self.exec_url(get, url, **kwargs)
+    return self.exec_url("GET", url, **kwargs)
 
   def do_post(self, url, **kwargs):
-    return self.exec_url(post, url, **kwargs)
+    return self.exec_url("POST", url, **kwargs)
 
   def search_listings(self, asset_name=None, offset=None, page_size=None):
     url = self.get_url("api/sitedata/listings")
@@ -57,8 +57,12 @@ class ServerConnection:
 
   def test_swap(self, swap):
     url = self.get_url("api/assets/quickparse")
-    return self.do_post(url)
+    return self.do_post(url, Hex=swap.raw)
 
   def post_swap(self, swap):
     url = self.get_url("api/assets/list")
-    return self.do_post(url)
+    result = self.do_post(url, Hex=swap.raw)
+    if result["valid"]:
+      return (True, result)
+    else:
+      return (False, result["error"])

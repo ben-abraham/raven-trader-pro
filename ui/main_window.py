@@ -130,12 +130,33 @@ class MainWindow(QMainWindow):
 
   def server_list_orders(self):
     server_diag = ServerOrdersDialog(self.server, parent=self)
-    server_diag.exec_()
+    if server_diag.exec_():
+      exec_order = server_diag.selected_order
+      if "b64SignedPartial" in exec_order:
+        partial_hex = b64_to_hex(exec_order["b64SignedPartial"])
+        print(partial_hex)
+        self.complete_order(hex_prefill=partial_hex)
 
   def server_post_trade(self):
     if self.menu_context["type"] != "trade":
       return
-    print("post trade!")
+    trade = self.menu_context["data"]
+    confirm_diag = show_prompt("Send Orders?", "Confirm post {} trades to server?".format(len(trade.order_utxos)))
+    if confirm_diag == QMessageBox.Yes:
+      posted = 0
+      for active_order in trade.transactions:
+        (success, response) = self.server.post_swap(active_order)
+        if success:
+          posted += 1
+        else:
+          print("Error posting: ", response)
+
+      if posted == len(trade.transactions):
+        show_dialog("Success", "All trades posted succesfull!")
+      elif posted > 0:
+        show_dialog("Warning", "{}/{} trades posted.".format(posted, len(trade.transactions)), response)
+      else:
+        show_error("Error!", "No trades posted.", response)
 
 #
 # Context Menus
@@ -156,6 +177,7 @@ class MainWindow(QMainWindow):
     menu.addAction(self.actionRemoveTrade)
     menu.addAction(self.actionSetupTrade) if trade.missing_trades() > 0 else None
     menu.addAction(self.actionViewTrade) if len(trade.order_utxos) > 0 else None
+    menu.addAction(self.actionServerPostOrder) if self.settings.server_enabled() else None
     self.menu_context = { "type": "trade", "data": trade }
     action = menu.exec_(widget_inner.mapToGlobal(click_position))
 
@@ -205,8 +227,8 @@ class MainWindow(QMainWindow):
     else:
       return (True, None)
 
-  def complete_order(self):
-    order_dialog = OrderDetailsDialog(None, self.swap_storage, parent=self, dialog_mode="complete")
+  def complete_order(self, hex_prefill=None):
+    order_dialog = OrderDetailsDialog(None, self.swap_storage, parent=self, raw_prefill=hex_prefill, dialog_mode="complete")
     if(order_dialog.exec_()):
       partial_swap = order_dialog.build_order()
       finished_swap = partial_swap.complete_order(self.swap_storage)
@@ -303,7 +325,6 @@ class MainWindow(QMainWindow):
     if self.settings.server_enabled():
       server_menu = self.menuBar().addMenu("Trade Server")
       server_menu.addAction(self.actionServerListOrderse)
-      server_menu.addAction(self.actionServerPostOrder)
 
     for index, rpc in enumerate(self.settings.read("rpc_connections")):
       rpc_action = QAction(rpc["title"], self, checkable=True)

@@ -42,12 +42,17 @@ class ServerOrdersDialog(QDialog):
     self.btnPrev.setEnabled(self.server_offset > 0)
     self.btnNext.setEnabled(self.server_offset + PAGE_SIZE < self.orders["totalCount"])
 
+  def execute_order(self, order):
+    self.selected_order = order
+    self.accept()
+
   def add_server_order(self, list, server_order):
     orderWidget = QServerOrderWidget(server_order)
     orderItem = QListWidgetItem(list)
     orderItem.setSizeHint(orderWidget.sizeHint())
     list.addItem(orderItem)
     list.setItemWidget(orderItem, orderWidget)
+    orderWidget.btnActivate.clicked.connect(lambda _, order=server_order: self.execute_order(order))
 
 
 class QServerOrderWidget (QWidget):

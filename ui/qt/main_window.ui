@@ -308,7 +308,7 @@
   </action>
   <action name="actionServerPostOrder">
    <property name="text">
-    <string>Post Trade to Server</string>
+    <string>Post Trade(s) to Server</string>
    </property>
   </action>
 

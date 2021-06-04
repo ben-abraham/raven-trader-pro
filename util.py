@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import sys, getopt, argparse, json, time, getpass, os.path, datetime, shutil
+import sys, getopt, argparse, json, time, getpass, os.path, datetime, shutil, base64
 
 from app_settings import AppSettings
 
@@ -173,6 +173,10 @@ def save_json(path, data):
 
 def init_list(items, hook):
   return [hook(item) for item in items]
+
+def b64_to_hex(b64_str):
+  d = base64.b64decode(b64_str)
+  return ''.join(['{:02x}'.format(i) for i in d])
 
 #
 #Helper Classes
