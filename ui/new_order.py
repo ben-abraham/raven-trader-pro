@@ -43,7 +43,10 @@ class NewOrderDialog(QDialog):
       self.btnCheckAvailable.setVisible(False)
 
     if prefill:
-      self.cmbAssets.setCurrentText(prefill["asset"])
+      if self.mode == "buy":
+        self.cmbAssets.setCurrentText(prefill["asset"])
+      elif self.mode == "sell":
+        self.cmbAssets.setCurrentIndex(self.swap_storage.my_asset_names.index(prefill["asset"]))
       self.spinQuantity.setValue(prefill["quantity"])
       self.spinUnitPrice.setValue(prefill["unit_price"])
       self.asset_exists = True

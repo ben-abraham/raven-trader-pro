@@ -32,7 +32,7 @@ class NewTradeDialog(QDialog):
     self.cmbWantAsset.setCurrentText("")
 
     if prefill:
-      self.cmbOwnAsset.setCurrentText(prefill["asset"])
+      self.cmbOwnAsset.setCurrentIndex(self.swap_storage.my_asset_names.index(prefill["asset"]))
       self.spinOwnQuantity.setValue(prefill["quantity"])
       self.asset_exists = True
 
