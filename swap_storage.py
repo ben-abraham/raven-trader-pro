@@ -74,6 +74,7 @@ class SwapStorage:
 
   def add_completed(self, swap_transaction):
     self.history.append(swap_transaction)
+    self.remove_lock(utxo=swap_transaction.utxo)
 
   def remove_completed(self, swap_transaction):
     self.history.remove(swap_transaction)
@@ -213,7 +214,7 @@ class SwapStorage:
     for lock in self.locks:
       if txid == lock["txid"] and vout == lock["vout"]:
         return #Already added
-    print("Locking UTXO {}|{}".format(txid, vout))
+    print("Locking UTXO {}-{}".format(txid, vout))
     txout = do_rpc("gettxout", txid=txid, n=vout, include_mempool=True) #True means this will be None when spent in mempool
     if txout:
       utxo = vout_to_utxo(txout, txid, vout)
@@ -227,7 +228,7 @@ class SwapStorage:
     for lock in self.locks:
       if txid == lock["txid"] and vout == lock["vout"]:
         self.locks.remove(lock)
-    print("Unlocking UTXO {}|{}".format(txid, vout))
+    print("Unlocking UTXO {}-{}".format(txid, vout))
     #in wallet-lock mode we need to return these to the wallet
     if AppSettings.instance.lock_mode():
       self.wallet_lock_single(txid, vout, lock=False)

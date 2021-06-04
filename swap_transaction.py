@@ -283,7 +283,7 @@ class SwapTransaction():
         "in_quantity": in_qty,
         "out_quantity": out_qty,
         "own": False,
-        "utxo": swap_vin["txid"] + "|" + str(swap_vin["vout"]),
+        "utxo": join_utxo(swap_vin["txid"], str(swap_vin["vout"])),
         "destination": swap_vout["scriptPubKey"]["addresses"][0],
         "state": "new",
         "type": order_type,

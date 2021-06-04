@@ -99,7 +99,7 @@ class MainWindow(QMainWindow):
     if self.menu_context["type"] != "order":
       return
     if confirm:
-      if show_prompt("Remove Trade?", "Are you sure you want to remove this trade?") == QMessageBox.No:
+      if show_prompt("Remove Trade?", "Are you sure you want to remove this order?") == QMessageBox.No:
         return
     self.swap_storage.remove_completed(self.menu_context["data"])
     self.actionRefresh.trigger()
