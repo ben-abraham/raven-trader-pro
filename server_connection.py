@@ -51,9 +51,9 @@ class ServerConnection:
   def do_post(self, url, **kwargs):
     return self.exec_url("POST", url, **kwargs)
 
-  def search_listings(self, asset_name=None, offset=None, page_size=None):
+  def search_listings(self, asset_name=None, swap_type=None, offset=None, page_size=None):
     url = self.get_url("api/sitedata/listings")
-    return self.do_get(url, assetName=asset_name, pageSize=page_size, offset=offset)
+    return self.do_get(url, assetName=asset_name, swapType=swap_type, pageSize=page_size, offset=offset)
 
   def test_swap(self, swap):
     url = self.get_url("api/assets/quickparse")

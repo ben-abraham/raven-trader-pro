@@ -33,6 +33,10 @@
     </layout>
    </item>
    <item>
+    <widget class="QComboBox" name="cmbOrderType">
+    </widget>
+   </item>
+   <item>
     <widget class="QListWidget" name="lstServerOrders"/>
    </item>
    <item>

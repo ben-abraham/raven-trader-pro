@@ -22,17 +22,34 @@ class ServerOrdersDialog(QDialog):
     self.server = server_connection
     self.server_offset = 0
     self.actionRefresh.trigger()
+    self.cmbOrderType.currentTextChanged.connect(self.full_reset)
+    self.cmbOrderType.addItems(["All Orders", "Buy Orders Only", "Sell Orders Only", "Trade Orders Only"])
 
   def prev_page(self):
-    if self.server_offset - PAGE_SIZE > 0:
+    if self.server_offset - PAGE_SIZE >= 0:
       self.server_offset -= PAGE_SIZE
+    self.refresh_listings()
 
   def next_page(self):
     if self.server_offset + PAGE_SIZE < self.orders["totalCount"]:
       self.server_offset += PAGE_SIZE
+    self.refresh_listings()
+
+  def full_reset(self):
+    self.server_offset = 0
+    self.refresh_listings()
 
   def refresh_listings(self):
-    self.orders = self.server.search_listings(asset_name=self.txtSearch.text())
+    swap_type = None
+    #Have to reverse perspective when looking at external orders
+    if self.cmbOrderType.currentText() == "Buy Orders Only":
+      swap_type = SERVER_TYPE_SELL
+    elif self.cmbOrderType.currentText() == "Sell Orders Only":
+      swap_type = SERVER_TYPE_BUY
+    elif self.cmbOrderType.currentText() == "Trade Orders Only":
+      swap_type = SERVER_TYPE_TRADE
+
+    self.orders = self.server.search_listings(asset_name=self.txtSearch.text(), swap_type=swap_type, offset=self.server_offset, page_size=PAGE_SIZE)
     self.swaps = self.orders["swaps"]
     self.lstServerOrders.clear()
     self.lblStatus.setText("{}-{}/{}".format(self.orders["offset"], self.orders["offset"] + len(self.swaps), self.orders["totalCount"] ))
