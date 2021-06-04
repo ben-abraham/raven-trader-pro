@@ -240,11 +240,20 @@
     </property>
     <addaction name="actionDefault_Destination"/>
    </widget>
+   
+   <widget class="QMenu" name="menuServer">
+    <property name="title">
+     <string>Trade Server</string>
+    </property>
+    <addaction name="actionServerListOrderse"/>
+   </widget>
 
    <addaction name="menuFile"/>
    <addaction name="menuConnection"/>
    <addaction name="menuSettings"/>
+   <addaction name="menuServer"/>
   </widget>
+
 
   <widget class="QStatusBar" name="statusbar"/>
   

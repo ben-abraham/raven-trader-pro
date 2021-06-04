@@ -120,6 +120,9 @@ class AppSettings:
     rpc = self.rpc_details()
     return "{}_{}.json".format(rpc["host"].replace(".", "_"), rpc["port"])
 
+  def rpc_mainnet(self):
+    return self.rpc_details()["testnet"] == False
+
 #
 # Other helper
 #
