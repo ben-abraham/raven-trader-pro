@@ -32,7 +32,7 @@ def calculate_size(vins, vouts):
 
 def fund_asset_transaction_raw(swap_storage, fn_rpc, asset_name, quantity, vins, vouts):
   #Search for enough asset UTXOs
-  (asset_utxo_total, asset_utxo_set) = swap_storage.find_utxo_set("asset", quantity, name=asset_name, skip_locks=True)
+  (asset_utxo_total, asset_utxo_set) = swap_storage.find_utxo_set("asset", quantity, name=asset_name, include_locked=True)
   #Add our asset input(s)
   for asset_utxo in asset_utxo_set:
     vins.append({"txid":asset_utxo["txid"], "vout":asset_utxo["vout"]})
@@ -132,7 +132,7 @@ def show_dialog_inner(title, message, buttons, icon=QMessageBox.Information, mes
   return msg.exec_()
 
 def show_error(title, message, message_extra="", parent=None):
-  return show_dialog_inner(title, message, QMessageBox.Ok | QMessageBox.Cancel, QMessageBox.Critical, message_extra=message_extra, parent=parent)
+  return show_dialog_inner(title, message, QMessageBox.Ok, QMessageBox.Critical, message_extra=message_extra, parent=parent)
 
 def show_dialog(title, message, message_extra="", parent=None):
   return show_dialog_inner(title, message, QMessageBox.Ok | QMessageBox.Cancel, QMessageBox.Information, message_extra=message_extra, parent=parent)
@@ -247,7 +247,7 @@ class QTwoLineRowWidget (QWidget):
 
   def update_asset(self):
 
-    self.setTextUp("[{}] {:.8g}".format(self.asset_data["name"], self.asset_data["balance"]))
+    self.setTextUp("[{}] {:.8g}/{:.8g}".format(self.asset_data["name"], self.asset_data["available_balance"], self.asset_data["balance"]))
 
   @staticmethod
   def from_swap(swap, **kwargs):

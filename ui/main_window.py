@@ -31,13 +31,7 @@ class MainWindow(QMainWindow):
 
     self.update_dynamic_menus()
 
-    self.actionExit.triggered.connect(self.close)
-    self.actionRefresh.triggered.connect(self.refresh_main_window)
-
-    self.actionNewBuy.triggered.connect(self.new_buy_order)
-    self.actionNewSell.triggered.connect(self.new_sell_order)
-    self.actionNewTrade.triggered.connect(self.new_trade_order)
-    self.actionCompleteOrder.triggered.connect(self.complete_order)
+    #NOTE: Most actions are connected in the main_window.ui file
 
     self.updateTimer = QTimer(self)
     self.updateTimer.timeout.connect(self.actionRefresh.trigger)
@@ -81,40 +75,52 @@ class MainWindow(QMainWindow):
     self.update_lists()
     self.view_trade_details(trade)
 
-  def action_remove_trade(self):
+  def action_remove_trade(self, confirm=True):
     if self.menu_context["type"] != "trade":
       return
+    if confirm:
+      if not show_prompt("Remove Trade?", "Are you sure you want to remove this trade?"):
+        return
+    self.swap_storage.remove_swap(self.menu_context["data"])
+    self.actionRefresh.trigger()
 
-  def action_view_trade(self):
+  def action_view_trade(self, force=True):
     if self.menu_context["type"] != "trade":
       return
-    self.view_trade_details(self.menu_context["data"])
+    self.view_trade_details(self.menu_context["data"], force)
 
   def action_setup_trade(self):
     if self.menu_context["type"] != "trade":
       return
-    self.setup_trades(self.menu_context["data"], true)
+    self.setup_trades(self.menu_context["data"], True)
+    self.actionRefresh.trigger()
 
   def action_remove_order(self):
     if self.menu_context["type"] != "order":
       return
+    self.swap_storage.remove_completed(self.menu_context["data"])
+    self.actionRefresh.trigger()
 
   def action_view_order(self):
     if self.menu_context["type"] != "order":
       return
-    self.view_trade_details(self.menu_context["data"])
+    self.view_order_details(self.menu_context["data"])
     
   def trade_double_clicked(self, row_widget):
     list = row_widget.listWidget()
     row = list.itemWidget(row_widget)
     self.menu_context = { "type": "trade", "data": row.get_data()}
-    self.action_view_trade()
+    self.action_view_trade(force=False)
     
   def order_double_clicked(self, row_widget):
     list = row_widget.listWidget()
     row = list.itemWidget(row_widget)
     self.menu_context = { "type": "order", "data": row.get_data()}
     self.action_view_order()
+
+  def action_reset_locks(self):
+    self.swap_storage.refresh_locks(clear=True)
+    self.actionRefresh.trigger()
 
 #
 # Context Menus
@@ -132,6 +138,7 @@ class MainWindow(QMainWindow):
   def open_trade_menu(self, list, list_item, click_position, trade):
     menu = QMenu()
     widget_inner = list.itemWidget(list_item)
+    menu.addAction(self.actionRemoveTrade)
     menu.addAction(self.actionSetupTrade) if trade.missing_trades() > 0 else None
     menu.addAction(self.actionViewTrade) if len(trade.order_utxos) > 0 else None
     self.menu_context = { "type": "trade", "data": trade }
@@ -150,30 +157,36 @@ class MainWindow(QMainWindow):
 #
 
   def setup_trades(self, trade, force_create):
-    filled = trade.attempt_fill_trade_pool(self.swap_storage)
-    if not filled and force_create:
-      setup_all = QMessageBox.Yes if trade.missing_trades() == 1 else\
-        show_prompt_3("Setup All Trades?", "Would you like to setup all trades right now? If not, you can continue to make them one-by-one.")
-      if setup_all != QMessageBox.Cancel:
-        check_unlock()
-        try:
-          setup_trade = trade.setup_trade(self.swap_storage, max_add=None if setup_all == QMessageBox.Yes else 1)
-          if setup_trade:
-            setup_txid = self.preview_complete(setup_trade, "Setup Trade Order")
-            if setup_txid:
-              return (True, setup_txid)
-              #Wait for confirmation, then run this again.
-            else:
-              return (False, "Transaction Error: {}".format(setup_txid))
-          else:
-            return (False, "Invalid Trade")
-        except Exception as e:
-          print(e)
-          raise e
-          return (False, "Trade Error: {}".format(e))
-      else:
+    missing = trade.missing_trades()
+    has_items = len(trade.order_utxos) > 0
+    if missing == 0:
+      return (True, None)
+    setup_max = 1
+    if missing > 1:
+      setup_all = show_prompt_3("Setup All Trades?", "Would you like to setup all trades right now? If not, you can continue to make them one-by-one.")
+      if setup_all == QMessageBox.Yes:
+        setup_max = None
+      if setup_all == QMessageBox.Cancel:
         return (False, None)
-    else: #Pool has been filled
+    check_unlock()
+    pool_filled = trade.attempt_fill_trade_pool(self.swap_storage, max_add=setup_max)
+    if not pool_filled:
+      (setup_success, setup_result) = trade.setup_trade(self.swap_storage, max_add=setup_max)
+      if setup_success and setup_result:
+        setup_txid = self.preview_complete(setup_result, "Setup Trade Order")
+        if setup_txid:
+          return (True, setup_txid)
+          #Wait for confirmation, then run this again.
+        elif has_items and not force_create:
+          return (True, None)
+        else:
+          return (False, "Transaction Error: {}".format(setup_txid))
+      elif has_items and not force_create:
+        return (True, None)
+      else:
+        show_error("Not enough assets", setup_result)
+        return (False, setup_result)
+    else:
       return (True, None)
 
   def complete_order(self):
@@ -200,7 +213,7 @@ class MainWindow(QMainWindow):
       return submitted_txid
     return None
 
-  def view_trade_details(self, trade, force_order=True):
+  def view_trade_details(self, trade, force_order=False):
     (success, result) = self.setup_trades(trade, force_order)
     #TODO: Wait for TXID if one was sent out here
     if success:

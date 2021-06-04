@@ -60,11 +60,21 @@ class SwapStorage:
     ensure_directory(base_path)
     return os.path.join(base_path, AppSettings.instance.rpc_save_path())
 
-  def add_swap(self, swap):
-    self.swaps.append(swap)
+#
+# Basic Operations
+#
 
-  def remove_swap(self, swap):
-    self.swaps.remove(swap)
+  def add_swap(self, swap_trade):
+    self.swaps.append(swap_trade)
+
+  def remove_swap(self, swap_trade):
+    self.swaps.remove(swap_trade)
+
+  def add_completed(self, swap_transaction):
+    self.history.append(swap_transaction)
+
+  def remove_completed(self, swap_transaction):
+    self.history.remove(swap_transaction)
 
 #
 # Balance Calculation
@@ -76,8 +86,11 @@ class SwapStorage:
       bal_total[0] += utxo["amount"]
     for asset in self.my_asset_names:
       bal_total[1] += 1
+      asset_total = 0
       for outpoint in self.assets[asset]["outpoints"]:
-        bal_total[2] += outpoint["amount"]
+        asset_total += outpoint["amount"]
+      self.assets[asset]["balance"] = self.assets[asset]["available_balance"] = asset_total
+      bal_total[2] += asset_total
     bal_avail = bal_total[:]
 
     for my_lock in self.locks:
@@ -85,6 +98,7 @@ class SwapStorage:
         bal_avail[0] -= my_lock["amount"]
       elif my_lock["type"] == "asset":
         bal_avail[2] -= my_lock["amount"]
+        self.assets[my_lock["asset"]]["available_balance"] -= my_lock["amount"]
       continue
 
     self.available_balance = tuple(bal_avail)
@@ -199,10 +213,11 @@ class SwapStorage:
         return #Already added
     print("Locking UTXO {}|{}".format(txid, vout))
     txout = do_rpc("gettxout", txid=txid, n=vout, include_mempool=True) #True means this will be None when spent in mempool
-    utxo = vout_to_utxo(txout, txid, vout)
-    self.locks.append(utxo)
-    if AppSettings.instance.lock_mode():
-      self.wallet_lock_single(txid, vout)
+    if txout:
+      utxo = vout_to_utxo(txout, txid, vout)
+      self.locks.append(utxo)
+      if AppSettings.instance.lock_mode():
+        self.wallet_lock_single(txid, vout)
 
   def remove_lock(self, txid=None, vout=None, utxo=None):
     if utxo != None and txid == None and vout == None:
@@ -215,12 +230,18 @@ class SwapStorage:
     if AppSettings.instance.lock_mode():
       self.wallet_lock_single(txid, vout, lock=False)
 
-  def refresh_locks(self):
+  def refresh_locks(self, clear=False):
+    if clear:
+      print("Clearing")
+      print(len(self.locks))
+      self.wallet_unlock_all()
+      self.locks = []
     for swap in self.swaps:
       for utxo in swap.order_utxos:
         self.add_lock(utxo=utxo)
     if AppSettings.instance.lock_mode():
       self.wallet_lock_all_swaps()
+    print(len(self.locks))
 
   def lock_quantity(self, type):
     if type == "rvn":
@@ -228,15 +249,10 @@ class SwapStorage:
     else:
       return sum([float(lock["amount"]) for lock in self.locks if lock["type"] == "asset" and lock["name"] == type])
 
-  def add_completed(self, swap_transaction):
-    self.history.append(swap_transaction)
-
   def search_completed(self, include_mempool=True):
     all_found = []
     for trade in self.swaps:
       for utxo in trade.order_utxos:
-        #TODO: If loading against a different wallet with the same .json files,
-        # orders will appear completed as the UTXO's are no longer in our active set
         if self.swap_utxo_spent(utxo, in_mempool=include_mempool, check_cache=False):
           all_found.append((trade, utxo))
     return all_found
@@ -245,60 +261,44 @@ class SwapStorage:
 # UTXO Searching
 #
 
-  def find_utxo(self, type, quantity, name=None, exact=True, skip_locks=False, skip_rounded=True, sort_utxo=False):
-    #print("Find UTXO: {} Exact: {} Skip Locks: {}".format(quantity, exact, skip_locks))
-    if type == "rvn":
-      utxo_src = sorted([utxo for utxo in self.utxos], key=lambda utxo: utxo["amount"]) if sort_utxo else self.utxos
-      for rvn_utxo in utxo_src:
-        if(self.is_taken(rvn_utxo, skip_locks)):
-          continue
-        utxo_amount = float(rvn_utxo["amount"])
-        if(skip_rounded and round(utxo_amount, 0) == utxo_amount):
-          continue #Default-Optionally skip ravencoin transfers of exact amounts. there are *likely* missed trade UTXO's
-        if(utxo_amount == float(quantity) and exact) or (rvn_utxo["amount"] >= quantity and not exact):
-          return rvn_utxo
-    elif type == "asset":
-      matching_asset = self.assets[name]
-      if(matching_asset):
-        if(matching_asset["balance"] < quantity):
-          return None
-        utxo_src = sorted(matching_asset["outpoints"], key=lambda a_utxo: a_utxo["amount"]) if sort_utxo else matching_asset["outpoints"]
-        for asset_utxo in matching_asset["outpoints"]:
-          if(self.is_taken(asset_utxo, skip_locks)):
-            continue
-          if(float(asset_utxo["amount"]) == float(quantity) and exact) or (asset_utxo["amount"] >= quantity and not exact):
-            return asset_utxo
+  def find_utxo(self, type, quantity, name=None, exact=True, include_locked=False, skip_rounded=True, sort_utxo=False):
+    print("Find {} UTXO: {} Exact: {} Include Locks: {}".format(type, quantity, exact, include_locked))
+    available = self.get_utxos(type, name, include_locked=include_locked)
+    for utxo in available:
+      if(float(utxo["amount"]) == float(quantity) and exact) or (float(utxo["amount"]) >= quantity and not exact):
+          return utxo
     return None
 
-  def find_utxo_multiple_exact(self, type, quantity, name=None, skip_locks=False):
+  def find_utxo_multiple_exact(self, type, quantity, name=None, include_locked=False):
+    print("Find UTXO Multiple Exact: {} {} {} Include Locks: {}".format(quantity, type, name, include_locked))
+    return [utxo for utxo in self.get_utxos(type, name=name, include_locked=include_locked) if utxo["amount"] == quantity]
+
+  def get_utxos(self, type, name=None, include_locked=False):
     results = []
     if type == "rvn":
-      results = [utxo for utxo in self.utxos if utxo["amount"] == quantity]
+      results = [utxo for utxo in self.utxos]
     elif type == "asset":
-      results = [utxo for utxo in self.assets[name]["outpoints"] if utxo["amount"] == quantity]
+      results = [utxo for utxo in self.assets[name]["outpoints"]]
     else: #Use the type name itself
-      results = [utxo for utxo in self.assets[type]["outpoints"] if utxo["amount"] == quantity]
-    if skip_locks:
+      results = [utxo for utxo in self.assets[type]["outpoints"]]
+    if include_locked:
       return results
     else:
-      return [utxo for utxo in results if not self.is_taken(utxo, skip_locks=True)] #Only look for ones taken by active trade orders
+      return [utxo for utxo in results if not self.is_locked(utxo)]
 
-  def find_utxo_set(self, type, quantity, mode="combine", name=None, skip_locks=False):
+  def find_utxo_set(self, type, quantity, mode="combine", name=None, include_locked=False):
     found_set = None
     total = 0
+    
 
-    sorted_set = []
-    if type == "rvn":
-      sorted_set = sorted([utxo for utxo in self.utxos], key=lambda utxo: utxo["amount"])
-    elif type == "asset":
-      sorted_set = sorted(self.assets[name]["outpoints"], key=lambda utxo: utxo["amount"])
+    sorted_set = sorted(self.get_utxos(type, name, include_locked=include_locked), key=lambda utxo: utxo["amount"])
 
     if mode == "combine":
       #Try to combine as many UTXO's as possible into a single Transaction
       #This raises your transaction fees slighty (more data) but is ultimately a good thing for the network
       #Don't need to do anything actualy b/c default behavior is to go smallest-to-largest
       #However, if we have a single, unrounded UTXO that is big enough. it's always more efficient to use that instead
-      quick_check = self.find_utxo(type, quantity, name=name, skip_locks=skip_locks, exact=False, sort_utxo=True)
+      quick_check = self.find_utxo(type, quantity, name=name, include_locked=include_locked, exact=False, sort_utxo=True)
       if quick_check:
         #If we have a single UTXO big enough, just use it and get change. sort_utxo ensures we find the smallest first
         found_set = [quick_check]
@@ -306,8 +306,8 @@ class SwapStorage:
     elif mode == "minimize":
       #Minimize the number of UTXO's used, to reduce transaction fees
       #This minimizes transaction fees but
-      quick_check = self.find_utxo(type, quantity, name=name, skip_locks=skip_locks, exact=False, sort_utxo=True)
-      quick_check_2 = self.find_utxo(type, quantity, name=name, skip_locks=skip_locks, exact=False, skip_rounded=False, sort_utxo=True)
+      quick_check = self.find_utxo(type, quantity, name=name, include_locked=include_locked, exact=False, sort_utxo=True)
+      quick_check_2 = self.find_utxo(type, quantity, name=name, include_locked=include_locked, exact=False, skip_rounded=False, sort_utxo=True)
       if quick_check:
         #If we have a single UTXO big enough, just use it and get change. sort_utxo ensures we find the smallest first
         found_set = [quick_check]
@@ -331,9 +331,7 @@ class SwapStorage:
       print("{} UTXOs: {} Requested: {:.8g} Total: {:.8g} Change: {:.8g}".format(type, len(found_set), quantity, total, total - quantity))
       return (total, found_set)
     else:
-      print("Not enough funds found")
-      print("Total: {:.8g}".format(total))
-      print("Missing: {:.8g}".format(total - quantity))
+      print("Not enough {} funds found. Requested: {:.8g} Total: {:.8g} Missing: {:.8g}".format(type, quantity, total, total-quantity))
       return (None, None)
 
   #check if a swap's utxo has been spent
@@ -356,13 +354,18 @@ class SwapStorage:
           return {"type": "asset", "utxo": a_utxo, "name": asset_name}
     return None
 
-  def is_taken(self, utxo, skip_locks=False):
-    if not skip_locks:
-      for lock in self.locks:
-        if lock["txid"] == utxo["txid"] and lock["vout"] == utxo["vout"]:
-          return True
+  def is_locked(self, utxo):
+    for lock in self.locks:
+      if lock["txid"] == utxo["txid"] and lock["vout"] == utxo["vout"]:
+        return True
+    return False
+
+  def is_taken(self, utxo, ignore_locks=False):
+    expected = join_utxo(utxo["txid"], utxo["vout"])
+    if not ignore_locks:
+      if sel.is_locked(utxo):
+        return True
     for swap in self.swaps:
-      expected = join_utxo(utxo["txid"], utxo["vout"])
       if expected in swap.order_utxos:
         return True
     return False

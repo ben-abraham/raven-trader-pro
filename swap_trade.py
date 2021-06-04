@@ -64,7 +64,24 @@ class SwapTrade():
     else:
       return "N/A"
 
-  def attempt_fill_trade_pool(self, swap_storage, max_add = None):
+  def find_pool_trades(self):
+    missing_trades = self.missing_trades()
+    if missing_trades == 0:
+      return []
+    ready_utxo = swap_storage.find_utxo_multiple_exact(self.in_type, self.in_quantity, include_locked=False)
+    available_utxos = len(ready_utxo)
+    return ready_utxo
+
+  def pool_available(self):
+    available = self.find_pool_trades()
+    missing = self.missing_trades()
+
+    if missing == 0:
+      return 0
+    else:
+      return len(available)
+
+  def attempt_fill_trade_pool(self, swap_storage, max_add=None):
     missing_trades = self.missing_trades()
     if missing_trades == 0:
       return True #Pool is filled
@@ -73,7 +90,7 @@ class SwapTrade():
     if not self.destination:
       self.destination = do_rpc("getrawchangeaddress")
 
-    ready_utxo = swap_storage.find_utxo_multiple_exact(self.in_type, self.in_quantity, skip_locks=False)
+    ready_utxo = swap_storage.find_utxo_multiple_exact(self.in_type, self.in_quantity, include_locked=False)
     available_utxos = len(ready_utxo)
 
     if available_utxos < missing_trades:
@@ -82,7 +99,9 @@ class SwapTrade():
 
     if max_add: #Allow us to only add on-at-a-time if we want
       ready_utxo = ready_utxo[:max_add]
-    
+
+
+
     for ready_utxo in ready_utxo[:missing_trades]:
       use_utxo = make_utxo(ready_utxo)
       self.order_utxos.append(use_utxo)
@@ -98,6 +117,7 @@ class SwapTrade():
     if max_add:
       num_create = min(max_add, num_create)
     quantity_required = self.in_quantity * num_create
+    print("Setting up trade for {} missing. Max add: {}. Required Qty: {}".format(num_create, max_add, quantity_required))
 
     #TODO: MANY better ways to handle this.....
     #But for now I want to encourage address reuse especially with bulk trades
@@ -130,12 +150,15 @@ class SwapTrade():
 
     #Send any extra assets back to ourselves
     if self.in_type != "rvn":
-      (asset_total, asset_vins) = swap_storage.find_utxo_set("asset", quantity_required, name=self.in_type, skip_locks = True)
+      (asset_total, asset_vins) = swap_storage.find_utxo_set("asset", quantity_required, name=self.in_type, include_locked=False)
       if not asset_vins:
-        raise Exception("Not enough assets to fund trade!")
+        return (False, "Not enough assets to fund trade!")
+      
       setup_vins = [utxo_copy(vin) for vin in asset_vins]
       if asset_total > quantity_required:
         setup_vouts[asset_change_addr] = make_transfer(self.in_type, asset_total - quantity_required)
+
+
 
     estimated_size = calculate_size(setup_vins, setup_vouts)
     estimated_fee = calculated_fee_from_size(estimated_size)
@@ -152,7 +175,7 @@ class SwapTrade():
     raw_tx = do_rpc("createrawtransaction", inputs=setup_vins, outputs=setup_vouts)
     sign_tx = do_rpc("signrawtransaction", hexstring=raw_tx)
     
-    return sign_tx["hex"]
+    return (True, sign_tx["hex"])
 
   def missing_trades(self):
     return self.order_count - len(self.order_utxos)

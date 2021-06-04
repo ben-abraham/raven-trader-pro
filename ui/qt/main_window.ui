@@ -224,6 +224,7 @@
     <addaction name="separator"/>
     <addaction name="actionCompleteOrder"/>
     <addaction name="separator"/>
+    <addaction name="actionResetLocks"/>
     <addaction name="actionExit"/>
    </widget>
 
@@ -305,6 +306,11 @@
     <string>Refresh from Wallet</string>
    </property>
   </action>
+  <action name="actionResetLocks">
+   <property name="text">
+    <string>Reset all Wallet Locks</string>
+   </property>
+  </action>
 
   <action name="actionDefault_Destination">
    <property name="text">
@@ -339,6 +345,51 @@
    <slot>trigger()</slot>
   </connection>
   
+  <connection>
+   <sender>actionRefresh</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>refresh_main_window()</slot>
+  </connection>
+  <connection>
+   <sender>actionResetLocks</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>action_reset_locks()</slot>
+  </connection>
+  <connection>
+   <sender>actionExit</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+  </connection>
+
+
+  <connection>
+   <sender>actionNewBuy</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>new_buy_order()</slot>
+  </connection>
+  <connection>
+   <sender>actionNewSell</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>new_sell_order()</slot>
+  </connection>
+  <connection>
+   <sender>actionNewTrade</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>new_trade_order()</slot>
+  </connection>
+  <connection>
+   <sender>actionCompleteOrder</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>complete_order()</slot>
+  </connection>
+
   <connection>
    <sender>actionRemoveTrade</sender>
    <signal>triggered()</signal>
