@@ -103,7 +103,7 @@ def utxo_copy(vin):
 
 def vout_to_utxo(vout, txid, n):
   if "scriptPubKey" in vout:
-    if "type" in vout["scriptPubKey"] and vout["scriptPubKey"]["type"] == "transfer_asset":
+    if "asset" in vout["scriptPubKey"]:
       return {"txid": txid, "vout": n, "type": "asset", "amount": vout["scriptPubKey"]["asset"]["amount"], "asset": vout["scriptPubKey"]["asset"]["name"]}
     else:
       return {"txid": txid, "vout": n, "type": "rvn", "amount": vout["value"]}
@@ -287,7 +287,7 @@ class QTwoLineRowWidget (QWidget):
     
     spk = vout["scriptPubKey"]
 
-    if(spk["type"] == "transfer_asset"):
+    if("asset" in spk):
       row.setTextUp("{:.8g}x [{}]".format(float(spk["asset"]["amount"]),spk["asset"]["name"]))
     else:
       row.setTextUp("{:.8g} RVN".format(float(row.vout["value"])))

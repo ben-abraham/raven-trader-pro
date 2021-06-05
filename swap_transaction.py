@@ -230,17 +230,15 @@ class SwapTransaction():
         return None
 
       src_vout = vin_tx["vout"][swap_vin["vout"]]
-      in_type = src_vout["scriptPubKey"]["type"]
-      out_type = swap_vout["scriptPubKey"]["type"]
+      in_asset = "asset" in src_vout["scriptPubKey"]
+      out_asset = "asset" in swap_vout["scriptPubKey"]
       order_type = "unknown"
 
-      print("In: {}, Out: {}".format(in_type, out_type))
-
-      if in_type == "transfer_asset" and out_type == "transfer_asset":
+      if in_asset and out_asset:
         order_type = "trade"
-      elif in_type == "transfer_asset":
+      elif in_asset:
         order_type = "sell"
-      elif out_type == "transfer_asset":
+      elif out_asset:
         order_type = "buy"
 
       if order_type == "unknown":
