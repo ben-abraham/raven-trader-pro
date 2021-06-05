@@ -132,25 +132,25 @@ class QServerTradeWidget (QWidget):
     self.data = server_grouping
     self.textQVBoxLayout = QVBoxLayout()
     self.lblName        = QLabel()
-    self.lblBuySummary  = QLabel()
-    self.lblSellSummary = QLabel()
+    self.lblQuantity    = QLabel()
     self.textQVBoxLayout.addWidget(self.lblName)
-    self.textQVBoxLayout.addWidget(self.lblBuySummary)
-    self.textQVBoxLayout.addWidget(self.lblSellSummary)
+    self.textQVBoxLayout.addWidget(self.lblQuantity)
 
     self.allQHBoxLayout   = QHBoxLayout()
     self.btnBuy           = QPushButton()
     self.btnSell          = QPushButton()
     self.btnMore          = QPushButton()
-    self.allQHBoxLayout.addLayout(self.textQVBoxLayout, stretch=5)
+    self.btnBuy.setMaximumWidth(75)
+    self.btnSell.setMaximumWidth(75)
+    self.btnMore.setMaximumWidth(50)
+    self.allQHBoxLayout.addLayout(self.textQVBoxLayout, stretch=8)
     self.allQHBoxLayout.addWidget(self.btnBuy, stretch=3)
     self.allQHBoxLayout.addWidget(self.btnSell, stretch=3)
     self.allQHBoxLayout.addWidget(self.btnMore, stretch=1)
     self.setLayout(self.allQHBoxLayout)
 
     self.lblName.setText(self.data["asset"])
-    self.lblBuySummary.setText("Buy: {}".format(self.data["buyQuantity"]))
-    self.lblSellSummary.setText("Sell: {}".format(self.data["sellQuantity"]))
+    self.lblQuantity.setText("Available: Buy-{}  Sell-{}  Trade-{}".format(self.data["buyQuantity"], self.data["sellQuantity"], self.data["tradeQuantity"]))
 
     if self.data["minBuy"]:
       min_buy = self.data["minBuy"]
@@ -168,7 +168,7 @@ class QServerTradeWidget (QWidget):
       self.btnSell.setText("No Sell\nAvailable")
       self.btnSell.setEnabled(False)
     
-    self.btnMore.setText("...")
+    self.btnMore.setText("All\nOrders")
     self.btnMore.setToolTip("View all orders for this asset.")
 
     self.btnBuy.clicked.connect(lambda _, group=server_grouping: call_if_set(self.fn_execute_order, group["minBuy"]))
