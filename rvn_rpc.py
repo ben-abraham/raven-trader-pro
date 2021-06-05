@@ -85,7 +85,7 @@ def dup_transaction(tx):
   for old_vout in sorted(tx["vout"], key=lambda vo: vo["n"]):
     vout_script = old_vout["scriptPubKey"]
     vout_addr = vout_script["addresses"][0]
-    if(vout_script["type"] == "transfer_asset"):
+    if("asset" in vout_script):
       new_vout[vout_addr] = make_transfer(vout_script["asset"]["name"], vout_script["asset"]["amount"])
     else:
       new_vout[vout_addr] = old_vout["value"]
