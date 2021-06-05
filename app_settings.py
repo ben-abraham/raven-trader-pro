@@ -53,8 +53,8 @@ class AppSettings:
 
   def load_defaults(self):
     self.init_setting("rpc_connections", [
-      {"title": "Local Testnet", "user": "", "password": "", "unlock": "", "host": "localhost", "port": 18766, "testnet": True},
-      {"title": "Local Mainnet", "user": "", "password": "", "unlock": "", "host": "localhost", "port": 8766, "testnet": False},
+      {"title": "Local Testnet", "user": "", "password": "", "unlock": "", "host": "127.0.0.1", "port": 18766, "testnet": True},
+      {"title": "Local Mainnet", "user": "", "password": "", "unlock": "", "host": "127.0.0.1", "port": 8766, "testnet": False},
     ])
 
     self.init_setting("data_path", "~/.raventrader/data")
@@ -63,6 +63,7 @@ class AppSettings:
     self.init_setting("locking_mode", True)
     self.init_setting("active_rpc", 0)
     self.init_setting("update_interval", 5000)
+    self.init_setting("server_url", "")
 
 #
 # File I/O
