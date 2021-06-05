@@ -36,10 +36,6 @@ class SwapStorage:
   def on_close(self):
     self.save_data()
 
-  def call_if_set(self, fn_call, item):
-    if fn_call != None:
-      fn_call(item)
-
 #
 # File I/O
 #

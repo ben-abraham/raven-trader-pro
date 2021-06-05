@@ -33,6 +33,19 @@
     </layout>
    </item>
    <item>
+    <widget class="QCheckBox" name="chkCombineOrders">
+       <property name="text">
+        <string>Combine Orders</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+       <property name="toolTip">
+        <string>Show Trades Grouped By Asset Name</string>
+       </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QComboBox" name="cmbOrderType">
     </widget>
    </item>
@@ -115,6 +128,21 @@
    <signal>clicked()</signal>
    <receiver>actionNext</receiver>
    <slot>trigger()</slot>
+  </connection>
+
+
+
+  <connection>
+   <sender>cmbOrderType</sender>
+   <signal>currentTextChanged()</signal>
+   <receiver>Dialog</receiver>
+   <slot>full_reset()</slot>
+  </connection>
+  <connection>
+   <sender>chkCombineOrders</sender>
+   <signal>clicked()</signal>
+   <receiver>Dialog</receiver>
+   <slot>full_reset()</slot>
   </connection>
 
 

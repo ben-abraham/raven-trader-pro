@@ -51,14 +51,15 @@ def fund_transaction_final(swap_storage, fn_rpc, send_rvn, recv_rvn, target_addr
   if recv_rvn == 0 and send_rvn == 0:
     #Add dummy output for fee calc
     vouts[target_addr] = round(calculate_fee(original_tx) * 4, 8)
-    #Test sizing for fees, overkill to actually sign but :shrug:
-    sizing_raw = fn_rpc("createrawtransaction", inputs=vins, outputs=vouts)
-    send_rvn = calculate_fee(sizing_raw) * 4 #Quadruple fee should be enough to estimate actual fee
     
   if recv_rvn > 0 and send_rvn == 0:
     #If we are not supplying rvn, but expecting it, we need to subtract fees from that only
     #So add our output at full value first
     vouts[target_addr] = recv_rvn
+
+  #Make an initial guess on fees, quadruple should be enough to estimate actual fee post-sign
+  fee_guess = calculated_fee_from_size(calculate_size(vins, vouts)) * 4
+  send_rvn += fee_guess #add it to the amount required in the UTXO set
 
   print("Funding Raw Transaction. Send: {:.8g} RVN. Get: {:.8g} RVN".format(send_rvn, recv_rvn))
   
@@ -115,6 +116,10 @@ def make_prefill(asset, quantity=1, unit_price=1):
 #
 #Helper function
 #
+
+def call_if_set(fn_call, *args):
+  if fn_call != None:
+    fn_call(*args)
 
 def make_transfer(name, quantity):
   return {"transfer":{name:round(float(quantity), 8)}}

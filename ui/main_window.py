@@ -130,9 +130,9 @@ class MainWindow(QMainWindow):
     self.actionRefresh.trigger()
 
   def server_list_orders(self):
-    if not self.settings.rpc_mainnet():
-      show_error("Mainnet Only", "Sorry! Server Swaps are mainnet only currently.")
-      return
+    #if not self.settings.rpc_mainnet():
+    #  show_error("Mainnet Only", "Sorry! Server Swaps are mainnet only currently.")
+    #  return
 
     server_diag = ServerOrdersDialog(self.server, parent=self)
     if server_diag.exec_():
@@ -146,9 +146,9 @@ class MainWindow(QMainWindow):
     if self.menu_context["type"] != "trade":
       return
 
-    if not self.settings.rpc_mainnet():
-      show_error("Mainnet Only", "Sorry! Server Swaps are mainnet only currently.")
-      return
+    #if not self.settings.rpc_mainnet():
+    #  show_error("Mainnet Only", "Sorry! Server Swaps are mainnet only currently.")
+    #  return
 
     trade = self.menu_context["data"]
     confirm_diag = show_prompt("Send Orders?", "Confirm post {} trades to server?".format(len(trade.order_utxos)))
@@ -331,8 +331,6 @@ class MainWindow(QMainWindow):
 
   def update_dynamic_menus(self):
     self.menuConnection.clear()
-
-    self.menuServer.setEnabled(self.settings.server_enabled())
 
     for index, rpc in enumerate(self.settings.read("rpc_connections")):
       rpc_action = QAction(rpc["title"], self, checkable=True)

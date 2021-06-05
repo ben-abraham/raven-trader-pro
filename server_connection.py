@@ -37,12 +37,12 @@ class ServerConnection:
         print("RTServer <== {}".format(resp.text))
       j_resp = json.loads(resp.text)
       if "error" in j_resp and j_resp["error"]:
-        print("RT Error: ", j_resp["error"])
+        print("RT Error: ", resp.text)
         return None
       else:
         return j_resp
-    except:
-      print("RT Server Error")
+    except (Exception) as e:
+      print("RT Server Error ", e)
       return None
 
   def do_get(self, url, **kwargs):
@@ -54,6 +54,10 @@ class ServerConnection:
   def search_listings(self, asset_name=None, swap_type=None, offset=None, page_size=None):
     url = self.get_url("api/sitedata/listings")
     return self.do_get(url, assetName=asset_name, swapType=swap_type, pageSize=page_size, offset=offset)
+
+  def search_listings_grouped(self, asset_name=None, offset=None, page_size=None):
+    url = self.get_url("api/sitedata/groupedlistings")
+    return self.do_get(url, assetName=asset_name, pageSize=page_size, offset=offset)
 
   def test_swap(self, swap):
     url = self.get_url("api/assets/quickparse")
