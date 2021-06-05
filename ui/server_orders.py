@@ -26,8 +26,6 @@ class ServerOrdersDialog(QDialog):
     if prefill:
       self.txtSearch.setText(prefill["asset"]) if "asset" in prefill else None
 
-    self.actionRefresh.trigger()
-
   def prev_page(self):
     if self.server_offset - PAGE_SIZE >= 0:
       self.server_offset -= PAGE_SIZE
@@ -45,6 +43,7 @@ class ServerOrdersDialog(QDialog):
     self.refresh_listings()
 
   def refresh_listings(self):
+    print("Refreshing Server Orders")
     swap_type = None
     #Have to reverse perspective when looking at external orders
     if self.cmbOrderType.currentText() == "Buy Orders Only":
@@ -54,15 +53,17 @@ class ServerOrdersDialog(QDialog):
     elif self.cmbOrderType.currentText() == "Trade Orders Only":
       swap_type = SERVER_TYPE_TRADE
 
+    QApplication.setOverrideCursor(Qt.WaitCursor)
     if self.grouped_mode:
       self.orders = self.server.search_listings_grouped(asset_name=self.txtSearch.text(), offset=self.server_offset, page_size=PAGE_SIZE)
       self.swaps = self.orders["assets"]
     else:
       self.orders = self.server.search_listings(asset_name=self.txtSearch.text(), swap_type=swap_type, offset=self.server_offset, page_size=PAGE_SIZE)
       self.swaps = self.orders["swaps"]
+    QApplication.restoreOverrideCursor()
 
     self.lstServerOrders.clear()
-    self.lblStatus.setText("{}-{}/{}".format(self.orders["offset"], self.orders["offset"] + len(self.swaps), self.orders["totalCount"] ))
+    self.lblStatus.setText("{}-{}/{}".format(self.orders["offset"] + 1, self.orders["offset"] + len(self.swaps), self.orders["totalCount"] ))
     for swap in self.swaps:
       self.add_server_order(self.lstServerOrders, swap)
     
