@@ -79,12 +79,15 @@ class QServerOrderWidget (QWidget):
     self.textQVBoxLayout = QVBoxLayout()
     self.upText    = QLabel()
     self.downText  = QLabel()
+    #self.upText.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
+    #self.downText.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Maximum)
     self.textQVBoxLayout.addWidget(self.upText)
     self.textQVBoxLayout.addWidget(self.downText)
     self.allQHBoxLayout  = QHBoxLayout()
     self.btnActivate     = QPushButton()
-    self.allQHBoxLayout.addLayout(self.textQVBoxLayout, 0)
-    self.allQHBoxLayout.addWidget(self.btnActivate, 1)
+    #self.btnActivate.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+    self.allQHBoxLayout.addLayout(self.textQVBoxLayout, stretch=5)
+    self.allQHBoxLayout.addWidget(self.btnActivate, stretch=1)
     self.setLayout(self.allQHBoxLayout)
 
     #Need to reverse perspective for external orders
