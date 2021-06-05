@@ -15,7 +15,7 @@ Setup:
 - Windows: `pip install -r requirements.txt` 
 - Linux: `python3.7 -m pip install -r requirements.txt`
 - Make sure [raven core wallet](https://github.com/Ravenqt-RVN-SIG/Ravencoin/) is running with the following `raven.conf` variables
-- Set the values in `config.py` accordingly
+- Run the app once and then edit the config files in `~/.raventrader/settings.json` as needed to connect to RPC
 
 Running:
 - Windows: `python main.py`
