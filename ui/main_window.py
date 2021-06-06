@@ -187,7 +187,7 @@ class MainWindow(QMainWindow):
     menu.addAction(self.actionRemoveTrade)
     menu.addAction(self.actionSetupTrade) if trade.missing_trades() > 0 else None
     menu.addAction(self.actionViewTrade) if len(trade.order_utxos) > 0 else None
-    menu.addAction(self.actionServerPostOrder) if self.settings.server_enabled() else None
+    menu.addAction(self.actionServerPostOrder) if self.settings.server_enabled() and len(trade.order_utxos) > 0 else None
     self.menu_context = { "type": "trade", "data": trade }
     action = menu.exec_(widget_inner.mapToGlobal(click_position))
 
