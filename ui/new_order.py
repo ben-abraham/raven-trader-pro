@@ -33,14 +33,16 @@ class NewOrderDialog(QDialog):
       self.cmbAssets.setEditable(True)
       self.spinQuantity.setEnabled(False)
       self.btnCheckAvailable.clicked.connect(self.check_available)
-      self.cmbAssets.currentTextChanged.connect(self.asset_changed)
       self.cmbAssets.addItems(self.swap_storage.my_asset_names)
+      self.cmbAssets.currentTextChanged.connect(self.asset_changed)
       self.cmbAssets.setCurrentText("")
     elif self.mode == "sell":
       self.setWindowTitle("New Sell Order")
       self.cmbAssets.setEditable(False)
       self.cmbAssets.addItems(["{} [{}]".format(v, self.swap_storage.assets[v]["balance"]) for v in self.swap_storage.my_asset_names])
+      self.cmbAssets.currentIndexChanged.connect(self.check_available)
       self.btnCheckAvailable.setVisible(False)
+      self.check_available()
 
     if prefill:
       if self.mode == "buy":
@@ -51,30 +53,30 @@ class NewOrderDialog(QDialog):
       self.spinUnitPrice.setValue(prefill["unit_price"])
       self.asset_exists = True
 
-    self.cmbAssets.currentIndexChanged.connect(self.update)
     self.spinQuantity.valueChanged.connect(self.update)
     self.spinUnitPrice.valueChanged.connect(self.update)
     self.spinOrderCount.valueChanged.connect(self.update)
     self.update()
 
   def check_available(self):
-    #TODO: Save this asset data for later
-    asset_name = self.cmbAssets.currentText().replace("!", "")
-    want_admin = False
-    if(asset_name[-1:] == "!"):
-      want_admin = True
-      asset_name = asset_name[:-1]#Take all except !
-    details = do_rpc("getassetdata", asset_name=asset_name)
+    if self.mode == "buy":
+      asset_name = self.cmbAssets.currentText()
+    elif self.mode == "sell":
+      asset_name = self.swap_storage.my_asset_names[self.cmbAssets.currentIndex()]
+    (want_admin, details) = asset_details(asset_name)
     self.asset_exists = True if details else False
     self.btnCheckAvailable.setEnabled(False)
     if self.asset_exists:
-      self.spinQuantity.setEnabled(True)
-      self.btnCheckAvailable.setText("Yes! - {} total".format(details["amount"]))
+      if self.mode == "buy":
+        self.spinQuantity.setEnabled(True)
+        self.btnCheckAvailable.setText("Yes! - {} total".format(details["amount"]))
+      
+      self.spinQuantity.setDecimals(int(details["units"]))
       self.spinQuantity.setMaximum(float(details["amount"]))
+      self.spinQuantity.setMinimum(1 / pow(10, float(details["units"])))
     else:
       if self.cmbAssets.currentText().islower():
         show_error("Error","Asset does not exist! Assets are case-sensitive.")
-      self.spinQuantity.setEnabled(False)
       self.btnCheckAvailable.setText("Asset does not exist!")
     self.update()
 
@@ -82,6 +84,7 @@ class NewOrderDialog(QDialog):
     self.asset_exists = False
     self.btnCheckAvailable.setText("Check Available")
     self.btnCheckAvailable.setEnabled(True)
+    self.spinQuantity.setEnabled(False)
 
   def update(self):
     #Read GUI

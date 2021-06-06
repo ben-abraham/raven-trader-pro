@@ -255,7 +255,10 @@ class QTwoLineRowWidget (QWidget):
       self.setTextUp("{} {:.8g}x [{}] for {:.8g} [{}] ({:.8g}x [{}] each)".format(
         "Trade", self.trade.in_quantity, self.trade.in_type, self.trade.out_quantity, self.trade.out_type, self.trade.in_quantity / self.trade.out_quantity, self.trade.in_type))
     
-    self.setTextDown("{}/{}".format(len(self.trade.order_utxos), self.trade.order_count + self.trade.executed_count))
+    qty_msg = "{}/{}".format(len(self.trade.order_utxos), self.trade.order_count + self.trade.executed_count)
+    if self.trade.missing_trades():
+      qty_msg = "{} [{} Missing Trades]".format(qty_msg, self.trade.missing_trades())
+    self.setTextDown(qty_msg)
 
   def update_asset(self):
 

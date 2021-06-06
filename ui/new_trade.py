@@ -36,7 +36,7 @@ class NewTradeDialog(QDialog):
       self.spinOwnQuantity.setValue(prefill["quantity"])
       self.asset_exists = True
 
-    self.cmbOwnAsset.currentIndexChanged.connect(self.update)
+    self.cmbOwnAsset.currentIndexChanged.connect(self.my_asset_changed)
     self.cmbWantAsset.currentIndexChanged.connect(self.update)
     self.cmbWantAsset.currentTextChanged.connect(self.asset_changed)
     self.spinOwnQuantity.valueChanged.connect(self.update)
@@ -44,23 +44,29 @@ class NewTradeDialog(QDialog):
     self.spinOrderCount.valueChanged.connect(self.update)
 
     self.btnCheckAvailable.clicked.connect(self.check_available)
+
+    self.my_asset_changed()
     self.update()
 
+  def my_asset_changed(self):
+    asset_name = self.swap_storage.my_asset_names[self.cmbOwnAsset.currentIndex()]
+    (want_admin, details) = asset_details(asset_name)
+    if details:
+      self.spinOwnQuantity.setDecimals(int(details["units"]))
+      self.spinOwnQuantity.setMaximum(float(details["amount"]))#Set max to amount we own maybe?
+      self.spinOwnQuantity.setMinimum(1 / pow(10, float(details["units"])))
 
   def check_available(self):
     #TODO: Save this asset data for later
-    asset_name = self.cmbWantAsset.currentText().replace("!", "")
-    want_admin = False
-    if(asset_name[-1:] == "!"):
-      want_admin = True
-      asset_name = asset_name[:-1]#Take all except !
-    details = do_rpc("getassetdata", asset_name=asset_name)
+    (want_admin, details) = asset_details(self.cmbWantAsset.currentText())
     self.asset_exists = True if details else False
     self.btnCheckAvailable.setEnabled(False)
     if self.asset_exists:
       self.spinWantQuantity.setEnabled(True)
       self.btnCheckAvailable.setText("Yes! - {} total".format(details["amount"]))
+      self.spinWantQuantity.setDecimals(int(details["units"]))
       self.spinWantQuantity.setMaximum(float(details["amount"]))
+      self.spinWantQuantity.setMinimum(1 / pow(10, float(details["units"])))
     else:
       self.spinWantQuantity.setEnabled(False)
       self.btnCheckAvailable.setText("No!")

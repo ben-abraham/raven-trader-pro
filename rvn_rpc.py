@@ -102,3 +102,12 @@ def search_swap_tx(utxo):
         return tx
   print("Unable to find transaction for completed swap")
   return None #If we don't find it 10 blocks back, who KNOWS what happened to it
+
+def asset_details(asset_name):
+  asset_name = asset_name.replace("!", "")
+  admin = False
+  if(asset_name[-1:] == "!"):
+    admin = True
+    asset_name = asset_name[:-1]#Take all except !
+  details = do_rpc("getassetdata", asset_name=asset_name)
+  return (admin, details)

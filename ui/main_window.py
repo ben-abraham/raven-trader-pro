@@ -213,7 +213,7 @@ class MainWindow(QMainWindow):
     widget_inner = list.itemWidget(list_item)
     menu.addAction(self.actionViewOrder)
     menu.addAction(self.actionRemoveOrder)
-    menu.addAction(self.actionViewOnlineCryptoscope)
+    menu.addAction(self.actionViewOnlineCryptoscope) if swap.txid else None
     self.menu_context = { "type": "order", "data": swap }
     menu.exec_(widget_inner.mapToGlobal(click_position))
 

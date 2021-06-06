@@ -195,6 +195,7 @@ class SwapTrade():
       return None
     self.order_utxos.remove(utxo)
     self.executed_utxos.append(utxo)
+    self.executed_count += 1
     self.order_count -= 1
 
     matching_tx = None
