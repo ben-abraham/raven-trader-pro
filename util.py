@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import sys, getopt, argparse, json, time, getpass, os.path, datetime, shutil, base64
+import sys, getopt, argparse, json, time, getpass, os.path, datetime, shutil, base64, webbrowser
 
 from app_settings import AppSettings
 
@@ -116,6 +116,9 @@ def make_prefill(asset, quantity=1, unit_price=1):
 #
 #Helper function
 #
+
+def do_url(url):
+  webbrowser.open(url)
 
 def call_if_set(fn_call, *args):
   if fn_call != None:

@@ -309,6 +309,12 @@
     <string>Setup Trade Order(s)</string>
    </property>
   </action>
+
+  <action name="actionViewOnlineCryptoscope">
+   <property name="text">
+    <string>View Online (cryptoscope.io)</string>
+   </property>
+  </action>
   
   <action name="actionServerListOrderse">
    <property name="text">
@@ -376,6 +382,13 @@
    <signal>triggered()</signal>
    <receiver>MainWindow</receiver>
    <slot>server_post_trade()</slot>
+  </connection>
+  
+  <connection>
+   <sender>actionViewOnlineCryptoscope</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>view_online_cryptoscope()</slot>
   </connection>
   
   <connection>

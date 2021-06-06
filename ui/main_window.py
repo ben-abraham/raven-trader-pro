@@ -136,6 +136,13 @@ class MainWindow(QMainWindow):
     self.swap_storage.refresh_locks(clear=True)
     self.actionRefresh.trigger()
 
+  def view_online_cryptoscope(self):
+    if self.menu_context["type"] != "order":
+      return
+    base = "https://rvn.cryptoscope.io/tx/?txid={}" if self.settings.rpc_mainnet()\
+      else "https://rvnt.cryptoscope.io/tx/?txid={}"
+    do_url(base.format(self.menu_context["data"].txid))
+
   def server_list_orders(self):
     #if not self.settings.rpc_mainnet():
     #  show_error("Mainnet Only", "Sorry! Server Swaps are mainnet only currently.")
@@ -206,6 +213,7 @@ class MainWindow(QMainWindow):
     widget_inner = list.itemWidget(list_item)
     menu.addAction(self.actionViewOrder)
     menu.addAction(self.actionRemoveOrder)
+    menu.addAction(self.actionViewOnlineCryptoscope)
     self.menu_context = { "type": "order", "data": swap }
     menu.exec_(widget_inner.mapToGlobal(click_position))
 
