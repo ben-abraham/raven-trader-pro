@@ -311,6 +311,7 @@ class MainWindow(QMainWindow):
 
   def swap_confirmed(self, transaction, order):
     print("Own Swap Confirmed")
+    order.txid = transaction["txid"]
     order.state = "completed"
     self.actionRefresh.trigger()
 
@@ -323,6 +324,7 @@ class MainWindow(QMainWindow):
 
   def completed_trade_network(self, transaction, order):
     print("Trade Final Confirm")
+    order.txid = transaction["txid"]
     order.state = "completed"
     self.actionRefresh.trigger()
 
