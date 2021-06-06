@@ -99,18 +99,25 @@ class SwapTrade():
 
     if max_add: #Allow us to only add on-at-a-time if we want
       ready_utxo = ready_utxo[:max_add]
-
-
-
-    for ready_utxo in ready_utxo[:missing_trades]:
-      use_utxo = make_utxo(ready_utxo)
-      self.order_utxos.append(use_utxo)
-      new_trade = self.create_trade_transaction(use_utxo, self.current_number)
-      new_trade.sign_partial()
-      self.transactions.append(new_trade)
-      self.current_number += 1
-      swap_storage.add_lock(utxo=use_utxo)
+      
+    for utxo_data in ready_utxo[:missing_trades]:
+      self.add_utxo_to_pool(swap_storage, utxo_data)
+    
     return True #Pool now filled (/or there are enough items to fill it otherwise)
+
+  def add_utxo_to_pool(self, swap_storage, utxo_data):
+    if type(utxo_data) is not dict:
+      raise Exception("UTXO Data must be dict")
+    if utxo_data["amount"] != self.in_quantity:
+      raise Exception("UTXO Size mismatch. Expected {}, Actual {}".format(self.in_quantity, utxo_data["amount"]))
+
+    utxo_str = make_utxo(utxo_data)
+    self.order_utxos.append(utxo_str)
+    new_trade = self.create_trade_transaction(utxo_str, self.current_number)
+    new_trade.sign_partial()
+    self.transactions.append(new_trade)
+    self.current_number += 1
+    swap_storage.add_lock(utxo=utxo_str)
 
   def setup_trade(self, swap_storage, max_add=None):
     num_create = self.missing_trades()
@@ -183,7 +190,7 @@ class SwapTrade():
   def can_create_single_order(self, swap_storage):
     return self.attempt_fill_trade_pool(swap_storage, max_add=1)
 
-  def order_completed(self, swap_storage, utxo, sent_txid):
+  def order_completed(self, swap_storage, utxo):
     if utxo not in self.order_utxos:
       return None
     self.order_utxos.remove(utxo)
@@ -198,10 +205,7 @@ class SwapTrade():
     if matching_tx == None:
       return None
 
-    matching_tx.state = "completed"
-    matching_tx.txid = sent_txid
     self.transactions.remove(matching_tx)
-    swap_storage.add_completed(matching_tx)
     return matching_tx
 
   def create_trade_transaction(self, utxo, number):

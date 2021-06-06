@@ -99,6 +99,6 @@ def search_swap_tx(utxo):
     for tx_vin in details["vin"]:
       if ("txid" in tx_vin and "vout" in tx_vin) and \
         (tx_vin["txid"] == txid and tx_vin["vout"] == vout):
-        return tx_vin["txid"]
+        return tx
   print("Unable to find transaction for completed swap")
   return None #If we don't find it 10 blocks back, who KNOWS what happened to it

@@ -12,6 +12,7 @@ from util import *
 from rvn_rpc import *
 
 from server_connection import *
+from swap_storage import *
 
 PAGE_SIZE = 25
 
@@ -19,6 +20,7 @@ class ServerOrdersDialog(QDialog):
   def __init__(self, server_connection, prefill=None, parent=None, **kwargs):
     super().__init__(parent, **kwargs)
     uic.loadUi("ui/qt/server_orders.ui", self)
+    self.swap_storage = SwapStorage.instance
     self.server = server_connection
     self.server_offset = 0
     self.cmbOrderType.addItems(["All Orders", "Buy Orders Only", "Sell Orders Only", "Trade Orders Only"])
@@ -149,7 +151,13 @@ class QServerTradeWidget (QWidget):
     self.allQHBoxLayout.addWidget(self.btnMore, stretch=1)
     self.setLayout(self.allQHBoxLayout)
 
-    self.lblName.setText(self.data["asset"])
+    asset_name = self.data["asset"]
+    if asset_name in SwapStorage.instance.my_asset_names:
+      asset_details = SwapStorage.instance.assets[asset_name]
+      asset_title = "{} Own {} [{} free]".format(asset_name, asset_details["balance"], asset_details["available_balance"])
+    else:
+      asset_title = asset_name
+    self.lblName.setText(asset_title)
     self.lblQuantity.setText("Available: Buy-{}  Sell-{}  Trade-{}".format(self.data["buyQuantity"], self.data["sellQuantity"], self.data["tradeQuantity"]))
 
     if self.data["minBuy"]:

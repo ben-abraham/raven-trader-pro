@@ -16,16 +16,18 @@ from swap_trade import SwapTrade
 from app_settings import AppSettings
 
 class SwapStorage:
+  instance = None
 
   def __init__ (self):
     super()
+    SwapStorage.instance = self
     self.swaps = []
     self.locks = []
     self.history = []
     self.waiting = [] #Waiting on confirmation
     self.trigger_cache = []
-    self.on_swap_executed = None
-    self.on_utxo_spent = None
+    self.on_swap_mempool = None
+    self.on_swap_confirmed = None
   
   def on_load(self):
     self.load_data()
@@ -72,7 +74,8 @@ class SwapStorage:
 
   def add_completed(self, swap_transaction):
     self.history.append(swap_transaction)
-    self.remove_lock(utxo=swap_transaction.utxo)
+    if swap_transaction.own:
+      self.remove_lock(utxo=swap_transaction.utxo)
 
   def remove_completed(self, swap_transaction):
     self.history.remove(swap_transaction)
@@ -132,28 +135,36 @@ class SwapStorage:
   def num_waiting(self):
     return len(self.waiting)
 
-  def add_waiting(self, txid, fnOnSeen=None, fnOnConfirm=None):
+  def add_waiting(self, txid, fnOnSeen=None, fnOnConfirm=None, callback_data=None):
     print("Waiting on txid: {}".format(txid))
-    self.waiting.append((txid, fnOnSeen, fnOnConfirm))
+    self.waiting.append((txid, fnOnSeen, fnOnConfirm, callback_data))
+
+  def clear_waiting(self):
+    self.waiting.clear()
 
   def check_waiting(self):
     for waiting in self.waiting:
-      (txid, seen, confirm) = waiting
+      (txid, seen, confirm, callback_data) = waiting
       tx_data = do_rpc("getrawtransaction", txid=txid, verbose=True)
       if not tx_data:
         continue
-      if txid not in self.trigger_cache:
+      #TODO: Adjustable confirmations
+      tx_confirmed = "confirmations" in tx_data and tx_data["confirmations"] >= 1
+      
+      if not tx_confirmed and txid not in self.trigger_cache:
         print("Waiting txid {} confirmed in mempool.".format(txid))
         self.trigger_cache.append(txid)
-        if seen:
-          seen(tx_data)
-      #TODO: Adjustable confirmations
-      elif "confirmations" in tx_data and tx_data["confirmations"] >= 1 and txid in self.trigger_cache:
+        call_if_set(seen, tx_data, callback_data)
+      elif tx_confirmed and txid in self.trigger_cache:
         print("Waiting txid {} fully confirmed.".format(txid))
         self.trigger_cache.remove(txid)
         self.waiting.remove(waiting)
-        if confirm:
-          confirm(tx_data)
+        call_if_set(confirm, tx_data, callback_data)
+      elif tx_confirmed and txid not in self.trigger_cache:
+        print("Missed memcache for txid {}, direct to confirm.".format(txid))
+        self.waiting.remove(waiting)
+        call_if_set(seen, tx_data, callback_data)
+        call_if_set(confirm, tx_data, callback_data)
       
   def wallet_lock_all_swaps(self):
     #first unlock everything
@@ -202,6 +213,7 @@ class SwapStorage:
     self.my_asset_names = []
     self.total_balance = (0,0,0)
     self.available_balance = (0,0,0)
+    self.clear_waiting()
 
   def update_wallet(self):
     self.check_waiting()
@@ -213,11 +225,14 @@ class SwapStorage:
 
     removed_orders = self.search_completed()
     for (trade, utxo) in removed_orders:
-      #TODO: Notify via event here
-      print("Order removed: ", utxo)
-      #If we find a matching order in the tx list, add it to history
-      #TODO: search chain for used UTXO
-      finished_order = trade.order_completed(self, utxo, None)
+      finished_order = trade.order_completed(self, utxo)
+      transaction = search_swap_tx(utxo)
+      if transaction:
+        txid = transaction["txid"]
+        print("Order Completed: TXID {}".format(txid))
+        self.add_waiting(txid, self.on_swap_mempool, self.on_swap_confirmed, callback_data=finished_order)
+      else:
+        print("Order executed on unknown transaction")
 
     #Load details of wallet-locked transactions, inserted into self.utxos/assets
     self.load_wallet_locked()

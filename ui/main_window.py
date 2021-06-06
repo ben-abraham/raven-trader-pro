@@ -30,6 +30,8 @@ class MainWindow(QMainWindow):
 
     self.settings = AppSettings.instance
     self.swap_storage = storage
+    self.swap_storage.on_swap_mempool = self.swap_mempool
+    self.swap_storage.on_swap_confirmed = self.swap_confirmed
     self.server = ServerConnection()
     self.server_menu = None
 
@@ -91,6 +93,11 @@ class MainWindow(QMainWindow):
   def action_view_trade(self, force=True):
     if self.menu_context["type"] != "trade":
       return
+
+    if self.menu_context["data"].order_count == 0:
+      show_error("No trades left", "Trade pool is now empty. :(")
+      return
+
     self.view_trade_details(self.menu_context["data"], force)
 
   def action_setup_trade(self):
@@ -149,8 +156,11 @@ class MainWindow(QMainWindow):
     #if not self.settings.rpc_mainnet():
     #  show_error("Mainnet Only", "Sorry! Server Swaps are mainnet only currently.")
     #  return
-
     trade = self.menu_context["data"]
+    if len(trade.transactions) == 0:
+      show_error("No trades to publish.")
+      return
+    
     confirm_diag = show_prompt("Send Orders?", "Confirm post {} trades to server?".format(len(trade.order_utxos)))
     if confirm_diag == QMessageBox.Yes:
       posted = 0
@@ -222,7 +232,8 @@ class MainWindow(QMainWindow):
       if setup_success and setup_result:
         setup_txid = self.preview_complete(setup_result, "Setup Trade Order")
         if setup_txid:
-          self.swap_storage.add_waiting(setup_txid)
+          self.swap_storage.add_waiting(setup_txid, self.setup_mempool_confirmed, self.setup_network_confirmed, callback_data=trade)
+          self.actionRefresh.trigger()
           return (True, setup_txid)
           #Wait for confirmation, then run this again.
         elif has_items and not force_create:
@@ -237,7 +248,7 @@ class MainWindow(QMainWindow):
     else:
       return (True, None)
 
-  def complete_order(self, hex_prefill=None):
+  def complete_order(self, _, hex_prefill=None):
     order_dialog = OrderDetailsDialog(None, self.swap_storage, parent=self, raw_prefill=hex_prefill, dialog_mode="complete")
     if(order_dialog.exec_()):
       partial_swap = order_dialog.build_order()
@@ -246,13 +257,9 @@ class MainWindow(QMainWindow):
         print("Swap: ", json.dumps(partial_swap.__dict__))
         sent_txid = self.preview_complete(finished_swap, "Confirm Transaction [2/2]")
         if sent_txid:
-          partial_swap.txid = sent_txid
-          partial_swap.state = "completed" #TODO: Add waiting on confirmation phase
-          #Add a completed swap to the list.
-          #it's internally tracked from an external source
-          self.swap_storage.add_waiting(sent_txid)
-          self.swap_storage.add_completed(partial_swap)
+          self.swap_storage.add_waiting(sent_txid, self.completed_trade_mempool, self.completed_trade_network, callback_data=partial_swap)
           self.actionRefresh.trigger()
+          
   
   def preview_complete(self, raw_tx, message, swap=None):
     preview_dialog = PreviewTransactionDialog(swap, raw_tx, self.swap_storage, preview_title=message, parent=self)
@@ -264,9 +271,7 @@ class MainWindow(QMainWindow):
 
   def view_trade_details(self, trade, force_order=False):
     (success, result) = self.setup_trades(trade, force_order)
-    #TODO: Wait for TXID if one was sent out here
     if success:
-      self.actionRefresh.trigger()
       if result == None:
         details = OrderDetailsDialog(trade, self.swap_storage, parent=self, dialog_mode="multiple")
         return details.exec_()
@@ -286,6 +291,47 @@ class MainWindow(QMainWindow):
     return (details.exec_(), details.spnUpdateUnitPrice.value())
 
 #
+# Transaction Callbacks
+#
+
+  def swap_mempool(self, transaction, order):
+    print("Own Swap In Mempool")
+    order.txid = transaction["txid"]
+    order.state = "pending"
+    self.swap_storage.add_completed(order)
+    self.actionRefresh.trigger()
+
+  def swap_confirmed(self, transaction, order):
+    print("Own Swap Confirmed")
+    order.state = "completed"
+    self.actionRefresh.trigger()
+
+  def completed_trade_mempool(self, transaction, order):
+    print("Trade Mempool Confirmed")
+    order.txid = transaction["txid"]
+    order.state = "pending"
+    self.swap_storage.add_completed(order)
+    self.actionRefresh.trigger()
+
+  def completed_trade_network(self, transaction, order):
+    print("Trade Final Confirm")
+    order.state = "completed"
+    self.actionRefresh.trigger()
+
+  def setup_mempool_confirmed(self, transaction, trade):
+    print("Trade Setup Mempool Confirmed")
+    txid = transaction["txid"]
+    #Naive approach, just lock the UTXO's immediately once we see it confirmed in mempool.
+    for i in range(0, trade.order_count):
+      utxo_data = vout_to_utxo(transaction["vout"][i], txid, i)
+      trade.add_utxo_to_pool(self.swap_storage, utxo_data)
+    self.actionRefresh.trigger()
+
+  def setup_network_confirmed(self, transaction, trade):
+    print("Trade Setup Final Confirm")
+    self.actionRefresh.trigger()
+
+#
 # Dynamic Menu Items
 #
 
@@ -296,6 +342,9 @@ class MainWindow(QMainWindow):
     self.settings.set_rpc_index(index)
     if test_rpc_status():
       print("Switching RPC")
+      self.lstMyAssets.clear()#Fully clear lists to fix bugs
+      self.lstAllOrders.clear()
+      self.lstPastOrders.clear()
       self.swap_storage.invalidate_all()
       self.swap_storage.load_data()
       self.actionRefresh.trigger()
