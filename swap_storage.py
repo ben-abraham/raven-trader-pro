@@ -103,7 +103,6 @@ class SwapStorage:
       elif my_lock["type"] == "asset":
         bal_avail[2] -= my_lock["amount"]
         self.assets[my_lock["asset"]]["available_balance"] -= my_lock["amount"]
-      continue
 
     self.available_balance = tuple(bal_avail)
     self.total_balance = tuple(bal_total)
@@ -192,10 +191,12 @@ class SwapStorage:
   def load_wallet_locked(self):
     if AppSettings.instance.lock_mode():
       wallet_locks = do_rpc("listlockunspent")
+      wallet_utxos = []
       for lock in wallet_locks:
         txout = do_rpc("gettxout", txid=lock["txid"], n=int(lock["vout"]), include_mempool=True)
         if txout:
           utxo = vout_to_utxo(txout, lock["txid"], int(lock["vout"]))
+          wallet_utxos.append(make_utxo(lock))
           if utxo["type"] == "rvn":
             self.utxos.append(utxo)
           elif utxo["type"] == "asset":
@@ -203,6 +204,14 @@ class SwapStorage:
               self.assets[utxo["asset"]] = {"balance": 0, "outpoints":[]}
             self.assets[utxo["asset"]]["balance"] += utxo["amount"]
             self.assets[utxo["asset"]]["outpoints"].append(utxo)
+      #Look for any UTXO's in self.locks *NOT* in the wallet-locked UTXO set
+      for lock in self.locks:
+        utxo_str = make_utxo(lock)
+        if utxo_str not in wallet_utxos:
+          print("Removing stale lock ", utxo_str)
+          self.remove_lock(utxo=utxo_str)
+
+
 
   def wallet_unlock_all(self):
     do_rpc("lockunspent", unlock=True)
@@ -223,6 +232,9 @@ class SwapStorage:
     #Pull list of assets for selecting
     self.assets = do_rpc("listmyassets", asset="", verbose=True)
 
+    #Load details of wallet-locked transactions, inserted into self.utxos/assets
+    self.load_wallet_locked()
+
     removed_orders = self.search_completed()
     for (trade, utxo) in removed_orders:
       finished_order = trade.order_completed(self, utxo)
@@ -233,9 +245,6 @@ class SwapStorage:
         self.add_waiting(txid, self.on_swap_mempool, self.on_swap_confirmed, callback_data=finished_order)
       else:
         print("Order executed on unknown transaction")
-
-    #Load details of wallet-locked transactions, inserted into self.utxos/assets
-    self.load_wallet_locked()
 
     self.my_asset_names = [*self.assets.keys()]
     #Cheat a bit and embed the asset name in it's metadata. This simplified things later
@@ -275,8 +284,6 @@ class SwapStorage:
 
   def refresh_locks(self, clear=False):
     if clear:
-      print("Clearing")
-      print(len(self.locks))
       self.wallet_unlock_all()
       self.locks = []
     for swap in self.swaps:
@@ -284,7 +291,6 @@ class SwapStorage:
         self.add_lock(utxo=utxo)
     if AppSettings.instance.lock_mode():
       self.wallet_lock_all_swaps()
-    print(len(self.locks))
 
   def lock_quantity(self, type):
     if type == "rvn":
@@ -384,7 +390,8 @@ class SwapStorage:
       return self.search_utxo(utxo) == None #This will always go away immediately w/ mempool. so in_mempool doesnt work here
     else:
       (txid, vout) = split_utxo(utxo)
-      return do_rpc("gettxout", txid=txid, n=vout, include_mempool=in_mempool) == None
+      txout = do_rpc("gettxout", txid=txid, n=vout, include_mempool=in_mempool)
+      return txout == None
 
   def search_utxo(self, utxo):
     (txid, vout) = split_utxo(utxo)
