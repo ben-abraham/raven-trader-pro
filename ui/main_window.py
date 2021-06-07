@@ -256,7 +256,7 @@ class MainWindow(QMainWindow):
     else:
       return (True, None)
 
-  def complete_order(self, _, hex_prefill=None):
+  def complete_order(self, _=None, hex_prefill=None):
     order_dialog = OrderDetailsDialog(None, self.swap_storage, parent=self, raw_prefill=hex_prefill, dialog_mode="complete")
     if(order_dialog.exec_()):
       partial_swap = order_dialog.build_order()
