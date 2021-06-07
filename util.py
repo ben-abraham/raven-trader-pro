@@ -180,13 +180,6 @@ class QTwoLineRowWidget (QWidget):
     self.allQHBoxLayout.addWidget(self.iconQLabel, 0)
     self.allQHBoxLayout.addLayout(self.textQVBoxLayout, 1)
     self.setLayout(self.allQHBoxLayout)
-    # setStyleSheet
-    self.textUpQLabel.setStyleSheet('''
-        color: rgb(0, 0, 255);
-    ''')
-    self.textDownQLabel.setStyleSheet('''
-        color: rgb(255, 0, 0);
-    ''')
    
   def update_swap(self):
     if self.swap.own: #If this is OUR trade, the default language can be used
@@ -212,12 +205,12 @@ class QTwoLineRowWidget (QWidget):
           "Exchanged", self.swap.total_price(), self.swap.in_type, self.swap.quantity(), self.swap.asset(), self.swap.unit_price(), self.swap.in_type))
 
     if self.swap.state == "pending":
-      self.setTextDown("Pending in mempool")
+      self.setTextDown("Pending in mempool", "pending")
     elif self.swap.state == "completed":
       if not self.swap.own:
-        self.setTextDown("Completed: {}".format(self.swap.txid))
+        self.setTextDown("Completed: {}".format(self.swap.txid), "confirmed")
       else:
-        self.setTextDown("Executed: {}".format(self.swap.txid))
+        self.setTextDown("Executed: {}".format(self.swap.txid), "confirmed")
     elif self.swap.state == "removed":
       self.setTextDown("Removed")
 
@@ -300,8 +293,13 @@ class QTwoLineRowWidget (QWidget):
   def setTextUp (self, text):
     self.textUpQLabel.setText(text)
 
-  def setTextDown (self, text):
+  def setTextDown (self, text, status=None):
     self.textDownQLabel.setText(text)
+    current_status = self.textDownQLabel.property("status")
+    if status != current_status:
+      self.textDownQLabel.setProperty("status", status)
+      self.textDownQLabel.style().unpolish(self.textDownQLabel)
+      self.textDownQLabel.style().polish(self.textDownQLabel)
 
   def setIcon (self, imagePath):
     self.iconQLabel.setPixmap(QPixmap(imagePath))

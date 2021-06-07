@@ -29,6 +29,11 @@ class MainWindow(QMainWindow):
     uic.loadUi("ui/qt/main_window.ui", self)
     self.setWindowTitle("Raven Trader Pro")
 
+    qss_file = open('ui/qt/style.qss',mode='r')
+    qss = qss_file.read()
+    qss_file.close()
+    self.setStyleSheet(qss)
+
     self.settings = AppSettings.instance
     self.swap_storage = storage
     self.swap_storage.on_swap_mempool = self.swap_mempool
