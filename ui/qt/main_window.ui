@@ -309,6 +309,11 @@
     <string>Setup Trade Order(s)</string>
    </property>
   </action>
+  <action name="actionRefillTrade">
+   <property name="text">
+    <string>Refill Trade Pool</string>
+   </property>
+  </action>
 
   <action name="actionViewOnlineCryptoscope">
    <property name="text">
@@ -465,6 +470,12 @@
    <signal>triggered()</signal>
    <receiver>MainWindow</receiver>
    <slot>action_setup_trade()</slot>
+  </connection>
+  <connection>
+   <sender>actionRefillTrade</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>action_refill_trade()</slot>
   </connection>
   
   <connection>

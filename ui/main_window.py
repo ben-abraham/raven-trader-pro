@@ -16,6 +16,7 @@ from ui.order_details import OrderDetailsDialog
 from ui.server_orders import ServerOrdersDialog
 from ui.new_trade import NewTradeDialog
 from ui.new_order import NewOrderDialog
+from ui.ui_prompt import *
 
 from server_connection import ServerConnection
 from swap_transaction import SwapTransaction
@@ -105,6 +106,17 @@ class MainWindow(QMainWindow):
       return
     self.setup_trades(self.menu_context["data"], True)
     self.actionRefresh.trigger()
+
+  def action_refill_trade(self):
+    if self.menu_context["type"] != "trade":
+      return
+    (num_new_trades, confirmed) = show_number_prompt("Refill trade pool?", "How many additional trades would you like to add to the trade pool?")
+    if confirmed and num_new_trades > 0:
+      print("Refill: ", num_new_trades)
+      trade = self.menu_context["data"]
+      trade.order_count += num_new_trades
+      self.setup_trades(trade, True)
+      self.actionRefresh.trigger()
 
   def action_remove_order(self, _, confirm=True):
     if self.menu_context["type"] != "order":
@@ -202,6 +214,7 @@ class MainWindow(QMainWindow):
     menu = QMenu()
     widget_inner = list.itemWidget(list_item)
     menu.addAction(self.actionRemoveTrade)
+    menu.addAction(self.actionRefillTrade)
     menu.addAction(self.actionSetupTrade) if trade.missing_trades() > 0 else None
     menu.addAction(self.actionViewTrade) if len(trade.order_utxos) > 0 else None
     menu.addAction(self.actionServerPostOrder) if self.settings.server_enabled() and len(trade.order_utxos) > 0 else None
@@ -332,7 +345,7 @@ class MainWindow(QMainWindow):
     print("Trade Setup Mempool Confirmed")
     txid = transaction["txid"]
     #Naive approach, just lock the UTXO's immediately once we see it confirmed in mempool.
-    for i in range(0, trade.order_count):
+    for i in range(0, trade.missing_trades()):
       utxo_data = vout_to_utxo(transaction["vout"][i], txid, i)
       trade.add_utxo_to_pool(self.swap_storage, utxo_data)
     self.actionRefresh.trigger()

@@ -10,6 +10,7 @@ from PyQt5 import uic
 import sys, getopt, argparse, json, time, getpass, os.path, re
 from util import *
 from rvn_rpc import *
+from ui.ui_prompt import *
 
 from swap_transaction import SwapTransaction
 

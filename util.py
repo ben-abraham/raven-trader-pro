@@ -10,6 +10,7 @@ from PyQt5 import uic
 import sys, getopt, argparse, json, time, getpass, os.path, datetime, shutil, base64, webbrowser
 
 from app_settings import AppSettings
+from ui.ui_prompt import *
 
 #
 #Chain helper functions
@@ -126,30 +127,6 @@ def call_if_set(fn_call, *args):
 
 def make_transfer(name, quantity):
   return {"transfer":{name:round(float(quantity), 8)}}
-
-def show_dialog_inner(title, message, buttons, icon=QMessageBox.Information, message_extra="", parent=None):
-  msg = QMessageBox(parent)
-  msg.setIcon(icon)
-
-  msg.setText(message)
-  if(message_extra):
-    msg.setInformativeText(message_extra)
-  msg.setWindowTitle(title)
-  msg.setStandardButtons(buttons)
-	
-  return msg.exec_()
-
-def show_error(title, message, message_extra="", parent=None):
-  return show_dialog_inner(title, message, QMessageBox.Ok, QMessageBox.Critical, message_extra=message_extra, parent=parent)
-
-def show_dialog(title, message, message_extra="", parent=None):
-  return show_dialog_inner(title, message, QMessageBox.Ok | QMessageBox.Cancel, QMessageBox.Information, message_extra=message_extra, parent=parent)
-
-def show_prompt(title, message, message_extra="", parent=None):
-  return show_dialog_inner(title, message, QMessageBox.Yes | QMessageBox.No, QMessageBox.Information, message_extra=message_extra, parent=parent)
-
-def show_prompt_3(title, message, message_extra="", parent=None):
-  return show_dialog_inner(title, message, QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel, QMessageBox.Information, message_extra=message_extra, parent=parent)
 
 def backup_remove_file(file_path):
   (root, ext) = os.path.splitext(file_path)
