@@ -162,11 +162,7 @@ class MainWindow(QMainWindow):
 
     server_diag = ServerOrdersDialog(self.server, parent=self)
     if server_diag.exec_():
-      exec_order = server_diag.selected_order
-      if "b64SignedPartial" in exec_order:
-        partial_hex = b64_to_hex(exec_order["b64SignedPartial"])
-        print(partial_hex)
-        self.complete_order(hex_prefill=partial_hex)
+      self.execute_server_orders(server_diag.selected_orders)
 
   def server_post_trade(self):
     if self.menu_context["type"] != "trade":
@@ -281,6 +277,16 @@ class MainWindow(QMainWindow):
           self.swap_storage.add_waiting(sent_txid, self.completed_trade_mempool, self.completed_trade_network, callback_data=partial_swap)
           self.actionRefresh.trigger()
           
+  def execute_server_orders(self, orders):
+    orders_hex = [b64_to_hex(order["b64SignedPartial"]) for order in orders if "b64SignedPartial" in order]
+    if len(orders_hex) == 1:
+      self.complete_order(hex_prefill=orders_hex[0])
+    elif len(orders) > 1:
+      check_unlock()
+      parsed_orders = [SwapTransaction.decode_swap(order_hex) for order_hex in orders_hex]
+      composite_trade = SwapTransaction.composite_transactions(self.swap_storage, parsed_orders)
+      print(parsed_orders)
+      print(composite_trade)
   
   def preview_complete(self, raw_tx, message, swap=None):
     preview_dialog = PreviewTransactionDialog(swap, raw_tx, self.swap_storage, preview_title=message, parent=self)

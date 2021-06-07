@@ -59,9 +59,11 @@ class ServerOrdersDialog(QDialog):
     if self.grouped_mode:
       self.orders = self.server.search_listings_grouped(asset_name=self.txtSearch.text(), offset=self.server_offset, page_size=PAGE_SIZE)
       self.swaps = self.orders["assets"]
+      self.lstServerOrders.setSelectionMode(QAbstractItemView.SingleSelection)
     else:
       self.orders = self.server.search_listings(asset_name=self.txtSearch.text(), swap_type=swap_type, offset=self.server_offset, page_size=PAGE_SIZE)
       self.swaps = self.orders["swaps"]
+      self.lstServerOrders.setSelectionMode(QAbstractItemView.ExtendedSelection)
     QApplication.restoreOverrideCursor()
 
     self.lstServerOrders.clear()
@@ -73,7 +75,11 @@ class ServerOrdersDialog(QDialog):
     self.btnNext.setEnabled(self.server_offset + PAGE_SIZE < self.orders["totalCount"])
 
   def execute_order(self, order):
-    self.selected_order = order
+    self.selected_orders = [order]
+    self.accept()
+    
+  def bulk_execute(self):
+    self.selected_orders = [self.lstServerOrders.itemWidget(row).data for row in self.lstServerOrders.selectedItems()]
     self.accept()
 
   def view_orders(self, asset_name):
@@ -96,6 +102,7 @@ class QServerOrderWidget (QWidget):
     
     self.fn_execute_order = fnExecuteOrder
     self.fn_view_orders = fnViewOrders
+    self.data = server_listing
     self.textQVBoxLayout = QVBoxLayout()
     self.upText    = QLabel()
     self.downText  = QLabel()
@@ -107,7 +114,7 @@ class QServerOrderWidget (QWidget):
     self.allQHBoxLayout.addWidget(self.btnActivate, stretch=1)
     self.setLayout(self.allQHBoxLayout)
 
-    self.btnActivate.clicked.connect(lambda _, order=server_listing: self.fn_execute_order(order))
+    self.btnActivate.clicked.connect(lambda _, order=server_listing: self.fn_execute_order(self.data))
 
     #Need to reverse perspective for external orders
     if server_listing["orderType"] == SERVER_TYPE_BUY:

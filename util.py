@@ -45,13 +45,13 @@ def fund_asset_transaction_raw(swap_storage, fn_rpc, asset_name, quantity, vins,
     print("Asset change being sent to {}".format(asset_change_addr))
     vouts[asset_change_addr] = make_transfer(asset_name, asset_utxo_total - quantity)
 
-def fund_transaction_final(swap_storage, fn_rpc, send_rvn, recv_rvn, target_addr, vins, vouts, original_tx):
+def fund_transaction_final(swap_storage, fn_rpc, send_rvn, recv_rvn, target_addr, vins, vouts, original_txs):
   cost = send_rvn #Cost represents rvn sent to the counterparty, since we adjust send_rvn later
   
   #If this is a swap, we need to add pseduo-funds for fee calc
   if recv_rvn == 0 and send_rvn == 0:
     #Add dummy output for fee calc
-    vouts[target_addr] = round(calculate_fee(original_tx) * 4, 8)
+    vouts[target_addr] = round(sum([calculate_fee(tx) for tx in original_txs]) * 4, 8)
     
   if recv_rvn > 0 and send_rvn == 0:
     #If we are not supplying rvn, but expecting it, we need to subtract fees from that only
@@ -76,7 +76,7 @@ def fund_transaction_final(swap_storage, fn_rpc, send_rvn, recv_rvn, target_addr
 
   #Then build and sign raw to estimate fees
   sizing_raw = fn_rpc("createrawtransaction", inputs=vins, outputs=vouts)
-  sizing_raw = fn_rpc("combinerawtransaction", txs=[sizing_raw, original_tx])
+  sizing_raw = fn_rpc("combinerawtransaction", txs=[sizing_raw] + original_txs)
   sizing_signed = fn_rpc("signrawtransaction", hexstring=sizing_raw) #Need to calculate fees against signed message
   fee_rvn = calculate_fee(sizing_signed["hex"])
   out_rvn = round((send_rvn + recv_rvn) - cost - fee_rvn, 8)

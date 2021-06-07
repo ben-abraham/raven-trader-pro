@@ -78,19 +78,17 @@ def check_unlock(timeout = 10):
     print("Unlocking Wallet for {}s".format(timeout))
     do_rpc("walletpassphrase", passphrase=rpc["unlock"], timeout=timeout)
 
-def dup_transaction(tx):
-  new_vin = []
-  new_vout = {}
+def dup_transaction(tx, vins=[], vouts={}):
   for old_vin in tx["vin"]:
-    new_vin.append({"txid": old_vin["txid"], "vout": old_vin["vout"], "sequence": old_vin["sequence"]})
+    vins.append({"txid": old_vin["txid"], "vout": old_vin["vout"], "sequence": old_vin["sequence"]})
   for old_vout in sorted(tx["vout"], key=lambda vo: vo["n"]):
     vout_script = old_vout["scriptPubKey"]
     vout_addr = vout_script["addresses"][0]
     if("asset" in vout_script):
-      new_vout[vout_addr] = make_transfer(vout_script["asset"]["name"], vout_script["asset"]["amount"])
+      vouts[vout_addr] = make_transfer(vout_script["asset"]["name"], vout_script["asset"]["amount"])
     else:
-      new_vout[vout_addr] = old_vout["value"]
-  return new_vin, new_vout
+      vouts[vout_addr] = old_vout["value"]
+  return vins, vouts
 
 def search_swap_tx(utxo):
   (txid, vout) = split_utxo(utxo)

@@ -174,10 +174,10 @@ class SwapTrade():
 
     if self.type == "buy":
       funded_tx = fund_transaction_final(swap_storage, do_rpc, quantity_required, 0, \
-        rvn_change_addr, setup_vins, setup_vouts, raw_tx)
+        rvn_change_addr, setup_vins, setup_vouts, [raw_tx])
     else:
       funded_tx = fund_transaction_final(swap_storage, do_rpc, 0, 0, \
-        rvn_change_addr, setup_vins, setup_vouts, raw_tx)
+        rvn_change_addr, setup_vins, setup_vouts, [raw_tx])
 
     raw_tx = do_rpc("createrawtransaction", inputs=setup_vins, outputs=setup_vouts)
     sign_tx = do_rpc("signrawtransaction", hexstring=raw_tx)

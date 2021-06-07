@@ -170,7 +170,7 @@ class SwapTransaction():
     rvn_addr = target_addr if self.type == "buy" else do_rpc("getnewaddress")
 
     #Add needed ins/outs needed to handle the rvn disbalance in the transaction
-    funded_finale = fund_transaction_final(swap_storage, do_rpc, send_rvn, recv_rvn, rvn_addr, final_vin, final_vout, self.raw)
+    funded_finale = fund_transaction_final(swap_storage, do_rpc, send_rvn, recv_rvn, rvn_addr, final_vin, final_vout, [self.raw])
     if not funded_finale:
       raise Exception("Funding raw transaction failed")
 
@@ -205,7 +205,111 @@ class SwapTransaction():
     #remove this so it doesn't get encoded to json later
     del(self.decoded)
     return tx_final
+  
+  @staticmethod
+  def composite_transactions(swap_storage, swaps):
+    total_inputs = {}
+    total_outputs = {}
+    canceled_assets = {}
+    for swap in swaps:
+      total_inputs[swap.in_type] = (total_inputs[swap.in_type] if swap.in_type in total_inputs else 0) + swap.in_quantity
+      total_outputs[swap.out_type] = (total_outputs[swap.out_type] if swap.out_type in total_outputs else 0) + swap.out_quantity
+    print("Sub-Total: In {} - Out {}".format(total_inputs, total_outputs))
+    #These assets need to be supplied by us (outputs) but were also supplied (inputs)
+    for dup_asset in [asset for asset in total_outputs.keys() if asset in total_inputs]:
+      if total_inputs[dup_asset] >= total_outputs[dup_asset]:
+        #More was provided than we need to supply, net credit
+        total_inputs[dup_asset] -= total_outputs[dup_asset]
+        canceled_assets[dup_asset] = total_outputs[dup_asset]
+        del total_outputs[dup_asset]
+        print("Net Credit {}x [{}]".format(total_inputs[dup_asset], dup_asset))
+      elif total_inputs[dup_asset] < total_outputs[dup_asset]:
+        #More was requested than supplied in inputs, net debit
+        total_outputs[dup_asset] -= total_inputs[dup_asset]
+        canceled_assets[dup_asset] = total_inputs[dup_asset]
+        del total_inputs[dup_asset]
+        print("Net Debit {}x [{}]".format(total_outputs[dup_asset], dup_asset))
+    print("Total: In {} - Out {} (Cancelled: {})".format(total_inputs, total_outputs, canceled_assets))
+
+    mega_tx_vins = []
+    mega_tx_vouts = {}
+
+    for swap in swaps:
+      swap_decoded = do_rpc("decoderawtransaction", log_error=False, hexstring=swap.raw)
+      if "SINGLE|ANYONECANPAY" not in swap_decoded["vin"][0]["scriptSig"]["asm"]:
+        print("Transaction not signed with SINGLE|ANYONECANPAY")
+        return None
+      dup_transaction(swap_decoded, mega_tx_vins, mega_tx_vouts)
+
+    print("Un-Funded Inputs: ", mega_tx_vins)
+    print("Un-Funded Outputs: ", mega_tx_vouts)
+
+    send_rvn = 0
+    recv_rvn = 0
+
+    #Fund all requested assets in the transaction
+    for supply_asset in total_outputs.keys():
+      if supply_asset == "rvn":
+        send_rvn = total_outputs["rvn"]
+      else:
+        fund_asset_transaction_raw(swap_storage, do_rpc, supply_asset, total_outputs[supply_asset], mega_tx_vins, mega_tx_vouts)
+
+    for recieve_asset in total_inputs.keys():
+      if recieve_asset == "rvn":
+        recv_rvn = total_inputs["rvn"]
+      else:
+        asset_addr = do_rpc("getnewaddress")
+        mega_tx_vouts[asset_addr] = make_transfer(recieve_asset, total_inputs[recieve_asset])
+
+
+    print("Asset-Funded Inputs: ", mega_tx_vins)
+    print("Asset-Funded Outputs: ", mega_tx_vouts)
+
+    original_hexs = [swap.raw for swap in swaps]
+
+    final_addr = do_rpc("getnewaddress")
+    funded = fund_transaction_final(swap_storage, do_rpc, send_rvn, recv_rvn, final_addr, mega_tx_vins, mega_tx_vouts, original_hexs)
+
+    if not funded:
+      raise Exception("Funding error")
+
     
+    #Build final funded raw transaction
+    final_raw = do_rpc("createrawtransaction", inputs=mega_tx_vins, outputs=mega_tx_vouts)
+    #Merge the signed tx from the original order
+    combined_raw = final_raw
+    for hex in original_hexs:
+      print(hex)
+      combined_raw = do_rpc("combinerawtransaction", txs=[combined_raw, hex])
+      print(combined_raw)
+    #Sign our inputs/outputs
+    signed_res = do_rpc("signrawtransaction", hexstring=combined_raw)
+    signed_hex = signed_res["hex"]
+    #Finally, Test mempool acceptance
+    mem_accept = do_rpc("testmempoolaccept", rawtxs=[signed_hex])
+
+    if(mem_accept and mem_accept[0]["allowed"]):
+      print("Accepted to mempool!")
+      tx_allowed = True
+      tx_final = signed_hex
+    elif(mem_accept and mem_accept[0]["reject-reason"]=="66: min relay fee not met"):
+      print("Min fee not met")
+      #raise Exception("Fee Error")
+      tx_allowed = True
+      tx_final = signed_hex
+    else:
+      print(mem_accept)
+      print("Final Raw")
+      print(combined_raw)
+      print("Signed Raw")
+      print(signed_res)
+      #if combined_raw:
+      #  print("Decoded")
+      #  print(do_rpc("decoderawtransaction", hexstring=combined_raw))
+      print("!!Error!!")
+      raise Exception("Error Building TX")
+    
+
   @staticmethod
   def decode_swap(raw_swap):
     parsed = do_rpc("decoderawtransaction", log_error=False, hexstring=raw_swap)

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>550</width>
-    <height>700</height>
+    <width>650</width>
+    <height>800</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -50,7 +50,11 @@
     </widget>
    </item>
    <item>
-    <widget class="QListWidget" name="lstServerOrders"/>
+    <widget class="QListWidget" name="lstServerOrders">
+     <property name="selectionMode">
+      <enum>QAbstractItemView::ExtendedSelection</enum>
+     </property>
+    </widget>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -79,6 +83,16 @@
       </widget>
      </item>
     </layout>
+   </item>
+   <item>
+    <widget class="QPushButton" name="btnBulkOrder">
+      <property name="text">
+        <string>Bulk Execute</string>
+      </property>
+       <property name="visible">
+        <bool>false</bool>
+       </property>
+    </widget>
    </item>
    <item>
     <widget class="QDialogButtonBox" name="buttonBox">
@@ -146,6 +160,12 @@
   </connection>
 
 
+  <connection>
+   <sender>btnBulkOrder</sender>
+   <signal>clicked()</signal>
+   <receiver>Dialog</receiver>
+   <slot>bulk_execute()</slot>
+  </connection>
   <connection>
    <sender>actionRefresh</sender>
    <signal>triggered()</signal>
