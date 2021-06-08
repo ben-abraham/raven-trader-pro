@@ -109,8 +109,8 @@ class SwapTrade():
   def add_utxo_to_pool(self, utxo_data):
     if type(utxo_data) is not dict:
       raise Exception("UTXO Data must be dict")
-    if utxo_data["amount"] != self.in_quantity:
-      raise Exception("UTXO Size mismatch. Expected {}, Actual {}".format(self.in_quantity, utxo_data["amount"]))
+    if round(utxo_data["amount"], 8) != round(self.in_quantity, 8):
+      raise Exception("UTXO Size mismatch. Expected {}, Actual {}".format(round(self.in_quantity, 8), round(utxo_data["amount"], 8)))
 
     utxo_str = make_utxo(utxo_data)
     self.order_utxos.append(utxo_str)
