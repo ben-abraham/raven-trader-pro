@@ -38,7 +38,7 @@ class AppStorage:
     self.swaps =     init_list(loaded_data["trades"],         SwapTrade) if "trades"   in loaded_data else []
     self.locks =     init_list(loaded_data["locks"],               dict) if "locks"    in loaded_data else []
     self.history =   init_list(loaded_data["history"],  SwapTransaction) if "history"  in loaded_data else []
-    self.addresses = init_list(loaded_data["addresses"],           dict) if "addresses"in loaded_data else []
+    self.addresses = init_list(loaded_data["addresses"],           dict) if "addresses"in loaded_data else [{"name": "default", "addresses": []}]
 
   def save_data(self):
     save_payload = {

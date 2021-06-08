@@ -22,14 +22,24 @@ class AppInstance:
     AppInstance.storage = AppStorage()
     AppInstance.wallet = WalletManager()
     AppInstance.server = ServerConnection()
+    AppInstance.on_load()
+
+  @staticmethod
+  def on_load():
     AppInstance.storage.on_load()
     AppInstance.wallet.on_load()
     #AppInstance.server.on_load()
 
   @staticmethod
-  def on_exit(error=None):
+  def on_close():
     AppInstance.wallet.on_close()
     AppInstance.storage.on_close()
+
+  @staticmethod
+  def on_exit(error=None):
+    if error:
+      print("App Error: ", error)
+    AppInstance.on_close()
 
 
 from swap_transaction import SwapTransaction

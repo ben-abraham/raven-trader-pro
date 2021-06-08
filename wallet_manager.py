@@ -13,12 +13,14 @@ from rvn_rpc import *
 
 from app_settings import AppSettings
 from app_instance import AppInstance
+from wallet_addresses import WalletAddresses
 
 class WalletManager:
 
   def __init__ (self):
     super()
     self.waiting = [] #Waiting on confirmation
+    self.addresses = WalletAddresses()
     self.trigger_cache = []
     self.on_swap_mempool = None
     self.on_swap_confirmed = None
@@ -39,11 +41,10 @@ class WalletManager:
 #
   def load_data(self):
     #TODO: Replace all local member access with app_storage directly?
-    AppInstance.storage.load_data()
     self.swaps =     AppInstance.storage.swaps
     self.locks =     AppInstance.storage.locks
     self.history =   AppInstance.storage.history
-    self.addresses = AppInstance.storage.addresses
+    self.addresses.on_load()
     #TODO: Better way to handle post-wallet-load events
     self.check_missed_history()
 
@@ -52,7 +53,7 @@ class WalletManager:
     AppInstance.storage.swaps = self.swaps
     AppInstance.storage.locks = self.locks
     AppInstance.storage.history = self.history
-    AppInstance.storage.addresses = self.addresses
+    self.addresses.on_close()
     AppInstance.storage.save_data()
 
 #
@@ -482,17 +483,19 @@ def calculated_fee_from_size(size):
 def calculate_size(vins, vouts):
   return 12 + (len(vins) * 148) + (len(vouts) * (9 + 25))
 
-def fund_asset_transaction_raw(fn_rpc, asset_name, quantity, vins, vouts):
+def fund_asset_transaction_raw(fn_rpc, asset_name, quantity, vins, vouts, asset_change_addr=None):
   #Search for enough asset UTXOs
   (asset_utxo_total, asset_utxo_set) = AppInstance.wallet.find_utxo_set("asset", quantity, name=asset_name, include_locked=True)
   #Add our asset input(s)
   for asset_utxo in asset_utxo_set:
     vins.append({"txid":asset_utxo["txid"], "vout":asset_utxo["vout"]})
 
+  if not asset_change_addr:
+    asset_change_addr = AppInstance.wallet.addresses.get_single_address("asset_change")
+
   #Add asset change if needed
   if(asset_utxo_total > quantity):
     #TODO: Send change to address the asset UTXO was originally sent to
-    asset_change_addr = fn_rpc("getnewaddress") #cheat to get rpc in this scope
     print("Asset change being sent to {}".format(asset_change_addr))
     vouts[asset_change_addr] = make_transfer(asset_name, asset_utxo_total - quantity)
 

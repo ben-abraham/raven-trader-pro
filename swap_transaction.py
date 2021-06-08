@@ -117,8 +117,7 @@ class SwapTransaction():
 
     #Create our destination for assets
     #NOTE: self.destination is where our raven is going, not our destination for assets
-    #hence the call to getnewaddress. Should support explicitly setting from the user
-    target_addr = do_rpc("getnewaddress")
+    target_addr = AppInstance.wallet.addresses.get_single_address("order_destination")
     print("Output is being sent to {}".format(target_addr))
 
 
@@ -169,7 +168,7 @@ class SwapTransaction():
 
     #We only have a single output when buying (the rvn) so no need to generate an addr in that case.
     #Just use the supplied one
-    rvn_addr = target_addr if self.type == "buy" else do_rpc("getnewaddress")
+    rvn_addr = target_addr if self.type == "buy" else AppInstance.wallet.addresses.get_single_address("change")
 
     #Add needed ins/outs needed to handle the rvn disbalance in the transaction
     funded_finale = fund_transaction_final(do_rpc, send_rvn, recv_rvn, rvn_addr, final_vin, final_vout, [self.raw])
@@ -260,7 +259,7 @@ class SwapTransaction():
       if recieve_asset == "rvn":
         recv_rvn = total_inputs["rvn"]
       else:
-        asset_addr = do_rpc("getnewaddress")
+        asset_addr = AppInstance.wallet.addresses.get_single_address("change")
         mega_tx_vouts[asset_addr] = make_transfer(recieve_asset, total_inputs[recieve_asset])
 
 
@@ -269,7 +268,7 @@ class SwapTransaction():
 
     original_hexs = [swap.raw for swap in swaps]
 
-    final_addr = do_rpc("getnewaddress")
+    final_addr = AppInstance.wallet.addresses.get_single_address("order_destination")
     funded = fund_transaction_final(do_rpc, send_rvn, recv_rvn, final_addr, mega_tx_vins, mega_tx_vouts, original_hexs)
 
     if not funded:
