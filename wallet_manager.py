@@ -11,8 +11,6 @@ import sys, getopt, argparse, json, time, getpass, os.path
 from util import *
 from rvn_rpc import *
 
-from swap_transaction import SwapTransaction
-from swap_trade import SwapTrade
 from app_settings import AppSettings
 from app_instance import AppInstance
 
@@ -538,3 +536,8 @@ def fund_transaction_final(fn_rpc, send_rvn, recv_rvn, target_addr, vins, vouts,
   print("Funding result: Send: {:.8g} Recv: {:.8g} Fee: {:.8g} Change: {:.8g}".format(send_rvn, recv_rvn, fee_rvn, out_rvn))
 
   return True
+
+
+
+from swap_transaction import SwapTransaction
+from swap_trade import SwapTrade

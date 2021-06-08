@@ -11,6 +11,7 @@ import sys, getopt, argparse, json, time, getpass, os.path
 from util import *
 from rvn_rpc import *
 
+from app_instance import AppInstance
 from app_settings import AppSettings
 
 SERVER_TYPE_BUY = 0

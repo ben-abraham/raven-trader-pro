@@ -11,6 +11,8 @@ import sys, getopt, argparse, json, time, getpass, os.path
 from util import *
 from rvn_rpc import *
 
+from app_instance import AppInstance
+
 class SwapTransaction():
   def __init__(self, dict, decoded=None):
     self.decoded = decoded
@@ -402,3 +404,6 @@ class SwapTransaction():
     else:
       print("Invalid TX")
       return None
+
+
+from wallet_manager import fund_asset_transaction_raw, fund_transaction_final

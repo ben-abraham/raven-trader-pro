@@ -11,6 +11,7 @@ import sys, getopt, argparse, json, time, getpass, os.path
 from util import *
 from rvn_rpc import *
 
+from app_instance import AppInstance
 from swap_transaction import SwapTransaction
 
 class SwapTrade():
@@ -243,3 +244,6 @@ class SwapTrade():
       "executed_utxos": [],
       "transactions": []
     })
+
+
+from wallet_manager import fund_asset_transaction_raw, fund_transaction_final
