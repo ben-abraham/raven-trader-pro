@@ -56,7 +56,7 @@ def fund_transaction_final(swap_storage, fn_rpc, send_rvn, recv_rvn, target_addr
   if recv_rvn > 0 and send_rvn == 0:
     #If we are not supplying rvn, but expecting it, we need to subtract fees from that only
     #So add our output at full value first
-    vouts[target_addr] = recv_rvn
+    vouts[target_addr] = round(recv_rvn, 8)
 
   #Make an initial guess on fees, quadruple should be enough to estimate actual fee post-sign
   fee_guess = calculated_fee_from_size(calculate_size(vins, vouts)) * 4
@@ -79,8 +79,8 @@ def fund_transaction_final(swap_storage, fn_rpc, send_rvn, recv_rvn, target_addr
   sizing_raw = fn_rpc("combinerawtransaction", txs=[sizing_raw] + original_txs)
   sizing_signed = fn_rpc("signrawtransaction", hexstring=sizing_raw) #Need to calculate fees against signed message
   fee_rvn = calculate_fee(sizing_signed["hex"])
-  out_rvn = round((send_rvn + recv_rvn) - cost - fee_rvn, 8)
-  vouts[target_addr] = out_rvn
+  out_rvn = (send_rvn + recv_rvn) - cost - fee_rvn
+  vouts[target_addr] = round(out_rvn, 8)
 
   print("Funding result: Send: {:.8g} Recv: {:.8g} Fee: {:.8g} Change: {:.8g}".format(send_rvn, recv_rvn, fee_rvn, out_rvn))
 

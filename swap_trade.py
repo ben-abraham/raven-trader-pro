@@ -146,7 +146,7 @@ class SwapTrade():
     for n in range(0, num_create):
       addr = addr_list[n]
       if self.type == "buy":
-        setup_vouts[addr] = self.in_quantity #Create rvn vout for buying
+        setup_vouts[addr] = round(self.in_quantity, 8) #Create rvn vout for buying
       elif self.type == "sell":
         setup_vouts[addr] = make_transfer(self.in_type, self.in_quantity) #Create asset vouts for selling
       elif self.type == "trade":

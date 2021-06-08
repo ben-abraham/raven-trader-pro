@@ -28,6 +28,8 @@ class SwapStorage:
     self.trigger_cache = []
     self.on_swap_mempool = None
     self.on_swap_confirmed = None
+    self.on_completed_mempool = None
+    self.on_completed_confirmed = None
   
   def on_load(self):
     self.load_data()
@@ -46,6 +48,8 @@ class SwapStorage:
     self.swaps = init_list(loaded_data["trades"], SwapTrade) if "trades" in loaded_data else []
     self.locks = init_list(loaded_data["locks"], dict) if "locks" in loaded_data else []
     self.history = init_list(loaded_data["history"], SwapTransaction) if "history" in loaded_data else []
+    #TODO: Better way to handle post-wallet-load events
+    self.check_missed_history()
 
   def save_data(self):
     save_payload = {
@@ -73,6 +77,10 @@ class SwapStorage:
       self.remove_lock(utxo=utxo)
 
   def add_completed(self, swap_transaction):
+    if swap_transaction.utxo in [old_order.utxo for old_order in self.history]:
+      print("Duplicate order add")
+      return
+    print("Adding to history...")
     self.history.append(swap_transaction)
     if swap_transaction.own:
       self.remove_lock(utxo=swap_transaction.utxo)
@@ -114,6 +122,34 @@ class SwapStorage:
     return self.available_balance[2]
 
 #
+# Callbacks
+#
+
+  def __on_swap_mempool(self, transaction, trade):
+    #TODO: Re-scan transaction to verify details of chain-executed trade
+    trade.txid = transaction["txid"]
+    trade.state = "pending"
+    self.add_completed(trade)
+    call_if_set(self.on_swap_mempool, transaction, trade)
+
+  def __on_swap_confirmed(self, transaction, trade):
+    trade.txid = transaction["txid"]
+    trade.state = "completed"
+    call_if_set(self.on_swap_confirmed, transaction, trade)
+
+  def __on_completed_mempool(self, transaction, swap):
+    swap.txid = transaction["txid"]
+    swap.state = "pending"
+    print(swap)
+    self.add_completed(swap)
+    call_if_set(self.on_completed_mempool, transaction, swap)
+
+  def __on_completed_confirmed(self, transaction, swap):
+    swap.txid = transaction["txid"]
+    swap.state = "completed"
+    call_if_set(self.on_completed_confirmed, transaction, swap)
+
+#
 # Wallet Interaction
 #
 
@@ -130,6 +166,9 @@ class SwapStorage:
       print("Locking")
     else:
       print("Non-Locking")
+
+  def swap_executed(self, swap, txid):
+    self.add_waiting(txid, self.__on_completed_mempool, self.__on_completed_mempool, callback_data=swap)
 
   def num_waiting(self):
     return len(self.waiting)
@@ -204,12 +243,6 @@ class SwapStorage:
               self.assets[utxo["asset"]] = {"balance": 0, "outpoints":[]}
             self.assets[utxo["asset"]]["balance"] += utxo["amount"]
             self.assets[utxo["asset"]]["outpoints"].append(utxo)
-      #Look for any UTXO's in self.locks *NOT* in the wallet-locked UTXO set
-      for lock in self.locks:
-        utxo_str = make_utxo(lock)
-        if utxo_str not in wallet_utxos:
-          print("Removing stale lock ", utxo_str)
-          self.remove_lock(utxo=utxo_str)
 
 
 
@@ -219,6 +252,7 @@ class SwapStorage:
   def invalidate_all(self):
     self.utxos = []
     self.assets = {}
+    self.trigger_cache = []
     self.my_asset_names = []
     self.total_balance = (0,0,0)
     self.available_balance = (0,0,0)
@@ -242,7 +276,7 @@ class SwapStorage:
       if transaction:
         txid = transaction["txid"]
         print("Order Completed: TXID {}".format(txid))
-        self.add_waiting(txid, self.on_swap_mempool, self.on_swap_confirmed, callback_data=finished_order)
+        self.add_waiting(txid, self.__on_swap_mempool, self.__on_swap_confirmed, callback_data=finished_order)
       else:
         print("Order executed on unknown transaction")
 
@@ -274,9 +308,13 @@ class SwapStorage:
   def remove_lock(self, txid=None, vout=None, utxo=None):
     if utxo != None and txid == None and vout == None:
       (txid, vout) = split_utxo(utxo)
+    found = False
     for lock in self.locks:
       if txid == lock["txid"] and vout == lock["vout"]:
         self.locks.remove(lock)
+        found = True
+    if not found:
+      return
     print("Unlocking UTXO {}-{}".format(txid, vout))
     #in wallet-lock mode we need to return these to the wallet
     if AppSettings.instance.lock_mode():
@@ -297,6 +335,19 @@ class SwapStorage:
       return sum([float(lock["amount"]) for lock in self.locks if lock["type"] == "rvn"])
     else:
       return sum([float(lock["amount"]) for lock in self.locks if lock["type"] == "asset" and lock["name"] == type])
+
+  def check_missed_history(self):
+    #Re-Add listeners for incomplete orders, should be fully posted, but add events so full sequence can happen
+    for pending_order in [hist_order for hist_order in self.history if hist_order.state != "completed"]:
+      if pending_order.utxo not in self.trigger_cache:
+        swap_tx = search_swap_tx(pending_order.utxo)
+        if swap_tx:
+          if pending_order.own:
+            self.add_waiting(swap_tx["txid"], self.__on_swap_mempool, self.__on_swap_confirmed, pending_order)
+          else:
+            self.add_waiting(swap_tx["txid"], self.__on_completed_mempool, self.__on_completed_confirmed, pending_order)
+        else:
+          print("Failed to find transaction for presumably completed UTXO {}".format(pending_order.utxo))
 
   def search_completed(self, include_mempool=True):
     all_found = []

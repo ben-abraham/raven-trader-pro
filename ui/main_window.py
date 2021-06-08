@@ -38,6 +38,8 @@ class MainWindow(QMainWindow):
     self.swap_storage = storage
     self.swap_storage.on_swap_mempool = self.swap_mempool
     self.swap_storage.on_swap_confirmed = self.swap_confirmed
+    self.swap_storage.on_completed_mempool = self.completed_trade_mempool
+    self.swap_storage.on_completed_confirmed = self.completed_trade_network
     self.server = ServerConnection()
     self.server_menu = None
 
@@ -279,8 +281,7 @@ class MainWindow(QMainWindow):
         print("Swap: ", json.dumps(partial_swap.__dict__))
         sent_txid = self.preview_complete(finished_swap, "Confirm Transaction [2/2]")
         if sent_txid:
-          self.swap_storage.add_waiting(sent_txid, self.completed_trade_mempool, self.completed_trade_network, callback_data=partial_swap)
-          self.actionRefresh.trigger()
+          self.swap_storage.swap_executed(partial_swap, sent_txid)
           
   def execute_server_orders(self, orders):
     orders_hex = [b64_to_hex(order["b64SignedPartial"]) for order in orders if "b64SignedPartial" in order]
@@ -328,28 +329,18 @@ class MainWindow(QMainWindow):
 
   def swap_mempool(self, transaction, order):
     print("Own Swap In Mempool")
-    order.txid = transaction["txid"]
-    order.state = "pending"
-    self.swap_storage.add_completed(order)
     self.actionRefresh.trigger()
 
   def swap_confirmed(self, transaction, order):
     print("Own Swap Confirmed")
-    order.txid = transaction["txid"]
-    order.state = "completed"
     self.actionRefresh.trigger()
 
   def completed_trade_mempool(self, transaction, order):
     print("Trade Mempool Confirmed")
-    order.txid = transaction["txid"]
-    order.state = "pending"
-    self.swap_storage.add_completed(order)
     self.actionRefresh.trigger()
 
   def completed_trade_network(self, transaction, order):
     print("Trade Final Confirm")
-    order.txid = transaction["txid"]
-    order.state = "completed"
     self.actionRefresh.trigger()
 
   def setup_mempool_confirmed(self, transaction, trade):
