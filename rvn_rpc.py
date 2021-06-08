@@ -14,8 +14,7 @@ from util import *
 from app_settings import AppSettings
 
 def test_rpc_status():
-  print(AppSettings.instance.rpc_url())
-    #Then do a basic test of RPC, also can check it is synced here
+  #Then do a basic test of RPC, also can check it is synced here
   chain_info = do_rpc("getblockchaininfo")
   #If the headers and blocks are not within 5 of each other,
   #then the chain is likely still syncing
