@@ -362,15 +362,14 @@ class MainWindow(QMainWindow):
   def update_rpc_connection(self, _, index, connection):
     #Save any changes to swaps
     old_index = self.settings.rpc_index()
-    self.wallet.save_data()
+    AppInstance.on_close()
     self.settings.set_rpc_index(index)
     if test_rpc_status():
       print("Switching RPC")
       self.lstMyAssets.clear()#Fully clear lists to fix bugs
       self.lstAllOrders.clear()
       self.lstPastOrders.clear()
-      self.wallet.invalidate_all()
-      self.wallet.load_data()
+      AppInstance.on_load()
       self.actionRefresh.trigger()
     else:
       print("Error testing RPC")
@@ -424,12 +423,10 @@ class MainWindow(QMainWindow):
     self.add_udpate_items(list, asset_list, lambda x: x["name"], QTwoLineRowWidget.from_asset, self.open_asset_menu)
 
   def add_update_swap_items(self, list, swap_list):
-    self.add_udpate_items(list, swap_list, lambda x: x.utxo, QTwoLineRowWidget.from_swap, self.open_order_menu)
+    self.add_udpate_items(list, swap_list, lambda x: hash(x), QTwoLineRowWidget.from_swap, self.open_order_menu)
 
   def add_update_trade_items(self, list, swap_list):
-    self.add_udpate_items(list, swap_list, \
-      lambda x: "{}{}{}{}".format(x.in_quantity,x.in_type,x.out_quantity,x.out_type)\
-      , QTwoLineRowWidget.from_trade, self.open_trade_menu)
+    self.add_udpate_items(list, swap_list, lambda x: hash(x), QTwoLineRowWidget.from_trade, self.open_trade_menu)
 
   def add_udpate_items(self, list_widget, item_list, fn_key_selector, fn_row_factory, fn_context_menu):
     existing_rows = {}

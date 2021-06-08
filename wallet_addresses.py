@@ -47,7 +47,7 @@ class WalletAddresses:
     print("Adding new address {} to pool [{}]".format(address, pool_name))
     
   def get_single_address(self, pool_name="default", avoid=[]):
-    return get_address_set(1, pool_name, avoid)[0]
+    return self.get_address_set(1, pool_name, avoid)[0]
   
   def get_address_set(self, num_addresses=1, pool_name="default", avoid=[]):
     pool = self.get_pool(pool_name, create=True)

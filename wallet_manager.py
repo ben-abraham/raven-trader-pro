@@ -54,7 +54,6 @@ class WalletManager:
     AppInstance.storage.locks = self.locks
     AppInstance.storage.history = self.history
     self.addresses.on_close()
-    AppInstance.storage.save_data()
 
 #
 # Basic Operations
@@ -263,7 +262,7 @@ class WalletManager:
 
     removed_orders = self.search_completed()
     for (trade, utxo) in removed_orders:
-      finished_order = trade.order_completed(self, utxo)
+      finished_order = trade.order_completed(utxo)
       transaction = search_swap_tx(utxo)
       if transaction:
         txid = transaction["txid"]

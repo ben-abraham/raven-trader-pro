@@ -27,6 +27,7 @@ class AppInstance:
   @staticmethod
   def on_load():
     AppInstance.storage.on_load()
+    AppInstance.wallet.invalidate_all()
     AppInstance.wallet.on_load()
     #AppInstance.server.on_load()
 
