@@ -12,19 +12,20 @@ from util import *
 from rvn_rpc import *
 from ui.ui_prompt import *
 
+from app_instance import AppInstance
 from swap_transaction import SwapTransaction
 from swap_trade import SwapTrade
 
 class NewOrderDialog(QDialog):
-  def __init__(self, mode, swap_storage, prefill=None, parent=None, **kwargs):
+  def __init__(self, mode, prefill=None, parent=None, **kwargs):
     super().__init__(parent, **kwargs)
     uic.loadUi("ui/qt/new_order.ui", self)
     self.mode = mode
-    self.swap_storage = swap_storage
+    self.wallet = AppInstance.wallet
     if(self.mode != "buy" and self.mode != "sell"):
       raise "Invalid Order Mode"
     
-    self.swap_storage.update_wallet()
+    self.wallet.update_wallet()
     self.waiting_txid = None
     self.asset_exists = True
     self.all_utxo = False #allow perfectly rounded UTXO's only when waiting from the start
@@ -34,13 +35,13 @@ class NewOrderDialog(QDialog):
       self.cmbAssets.setEditable(True)
       self.spinQuantity.setEnabled(False)
       self.btnCheckAvailable.clicked.connect(self.check_available)
-      self.cmbAssets.addItems(self.swap_storage.my_asset_names)
+      self.cmbAssets.addItems(self.wallet.my_asset_names)
       self.cmbAssets.currentTextChanged.connect(self.asset_changed)
       self.cmbAssets.setCurrentText("")
     elif self.mode == "sell":
       self.setWindowTitle("New Sell Order")
       self.cmbAssets.setEditable(False)
-      self.cmbAssets.addItems(["{} [{}]".format(v, self.swap_storage.assets[v]["balance"]) for v in self.swap_storage.my_asset_names])
+      self.cmbAssets.addItems(["{} [{}]".format(v, self.wallet.assets[v]["balance"]) for v in self.wallet.my_asset_names])
       self.cmbAssets.currentIndexChanged.connect(self.check_available)
       self.btnCheckAvailable.setVisible(False)
       self.check_available()
@@ -49,7 +50,7 @@ class NewOrderDialog(QDialog):
       if self.mode == "buy":
         self.cmbAssets.setCurrentText(prefill["asset"])
       elif self.mode == "sell":
-        self.cmbAssets.setCurrentIndex(self.swap_storage.my_asset_names.index(prefill["asset"]))
+        self.cmbAssets.setCurrentIndex(self.wallet.my_asset_names.index(prefill["asset"]))
       self.spinQuantity.setValue(prefill["quantity"])
       self.spinUnitPrice.setValue(prefill["unit_price"])
       self.asset_exists = True
@@ -63,7 +64,7 @@ class NewOrderDialog(QDialog):
     if self.mode == "buy":
       asset_name = self.cmbAssets.currentText()
     elif self.mode == "sell":
-      asset_name = self.swap_storage.my_asset_names[self.cmbAssets.currentIndex()]
+      asset_name = self.wallet.my_asset_names[self.cmbAssets.currentIndex()]
     (want_admin, details) = asset_details(asset_name)
     self.asset_exists = True if details else False
     self.btnCheckAvailable.setEnabled(False)
@@ -98,12 +99,12 @@ class NewOrderDialog(QDialog):
     if self.mode == "buy":
       self.asset_name = self.cmbAssets.currentText()
       #don't have enough rvn for the order
-      if self.total_price > self.swap_storage.rvn_balance():
+      if self.total_price > self.wallet.rvn_balance():
         self.valid_order = False
     else:
-      self.asset_name = self.swap_storage.my_asset_names[self.cmbAssets.currentIndex()]
+      self.asset_name = self.wallet.my_asset_names[self.cmbAssets.currentIndex()]
       #Don't own the asset or enough of it
-      if self.asset_name not in self.swap_storage.my_asset_names or self.quantity > self.swap_storage.assets[self.asset_name]["balance"]:
+      if self.asset_name not in self.wallet.my_asset_names or self.quantity > self.wallet.assets[self.asset_name]["balance"]:
         self.valid_order = False
 
     #Not valid while waiting on a tx to confirm or if asset hasn't been confirmed yet

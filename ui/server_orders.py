@@ -11,8 +11,8 @@ import sys, getopt, argparse, json, time, getpass, os.path
 from util import *
 from rvn_rpc import *
 
+from app_instance import AppInstance
 from server_connection import *
-from swap_storage import *
 
 PAGE_SIZE = 25
 
@@ -20,7 +20,7 @@ class ServerOrdersDialog(QDialog):
   def __init__(self, server_connection, prefill=None, parent=None, **kwargs):
     super().__init__(parent, **kwargs)
     uic.loadUi("ui/qt/server_orders.ui", self)
-    self.swap_storage = SwapStorage.instance
+    self.wallet = AppInstance.wallet
     self.server = server_connection
     self.server_offset = 0
     self.cmbOrderType.addItems(["All Orders", "Buy Orders Only", "Sell Orders Only", "Trade Orders Only"])
@@ -159,8 +159,8 @@ class QServerTradeWidget (QWidget):
     self.setLayout(self.allQHBoxLayout)
 
     asset_name = self.data["asset"]
-    if asset_name in SwapStorage.instance.my_asset_names:
-      asset_details = SwapStorage.instance.assets[asset_name]
+    if asset_name in AppInstance.wallet.my_asset_names:
+      asset_details = AppInstance.wallet.assets[asset_name]
       asset_title = "{} Own {} [{} free]".format(asset_name, asset_details["balance"], asset_details["available_balance"])
     else:
       asset_title = asset_name

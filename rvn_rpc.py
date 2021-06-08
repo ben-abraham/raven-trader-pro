@@ -63,7 +63,6 @@ def decode_full(txid):
     tx_url = "https://rvnt.cryptoscope.io/api/getrawtransaction/?txid={}&decode=1" if rpc["testnet"]\
       else "https://rvn.cryptoscope.io/api/getrawtransaction/?txid={}&decode=1"
     print("Query Full: {}".format(tx_url.format(txid)))
-    print(rpc)
     resp = get(tx_url.format(txid))
     if resp.status_code != 200:
       print("Error fetching raw transaction")

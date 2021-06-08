@@ -68,7 +68,7 @@ class SwapTrade():
     missing_trades = self.missing_trades()
     if missing_trades == 0:
       return []
-    ready_utxo = swap_storage.find_utxo_multiple_exact(self.in_type, self.in_quantity, include_locked=False)
+    ready_utxo = AppInstance.wallet.find_utxo_multiple_exact(self.in_type, self.in_quantity, include_locked=False)
     available_utxos = len(ready_utxo)
     return ready_utxo
 
@@ -81,7 +81,7 @@ class SwapTrade():
     else:
       return len(available)
 
-  def attempt_fill_trade_pool(self, swap_storage, max_add=None):
+  def attempt_fill_trade_pool(self, max_add=None):
     missing_trades = self.missing_trades()
     if missing_trades == 0:
       return True #Pool is filled
@@ -90,7 +90,7 @@ class SwapTrade():
     if not self.destination:
       self.destination = do_rpc("getrawchangeaddress")
 
-    ready_utxo = swap_storage.find_utxo_multiple_exact(self.in_type, self.in_quantity, include_locked=False)
+    ready_utxo = AppInstance.wallet.find_utxo_multiple_exact(self.in_type, self.in_quantity, include_locked=False)
     available_utxos = len(ready_utxo)
 
     if available_utxos < missing_trades:
@@ -101,11 +101,11 @@ class SwapTrade():
       ready_utxo = ready_utxo[:max_add]
       
     for utxo_data in ready_utxo[:missing_trades]:
-      self.add_utxo_to_pool(swap_storage, utxo_data)
+      self.add_utxo_to_pool(utxo_data)
     
     return True #Pool now filled (/or there are enough items to fill it otherwise)
 
-  def add_utxo_to_pool(self, swap_storage, utxo_data):
+  def add_utxo_to_pool(self, utxo_data):
     if type(utxo_data) is not dict:
       raise Exception("UTXO Data must be dict")
     if utxo_data["amount"] != self.in_quantity:
@@ -117,9 +117,9 @@ class SwapTrade():
     new_trade.sign_partial()
     self.transactions.append(new_trade)
     self.current_number += 1
-    swap_storage.add_lock(utxo=utxo_str)
+    AppInstance.wallet.add_lock(utxo=utxo_str)
 
-  def setup_trade(self, swap_storage, max_add=None):
+  def setup_trade(self, max_add=None):
     num_create = self.missing_trades()
     if max_add:
       num_create = min(max_add, num_create)
@@ -157,7 +157,7 @@ class SwapTrade():
 
     #Send any extra assets back to ourselves
     if self.in_type != "rvn":
-      (asset_total, asset_vins) = swap_storage.find_utxo_set("asset", quantity_required, name=self.in_type, include_locked=False)
+      (asset_total, asset_vins) = AppInstance.wallet.find_utxo_set("asset", quantity_required, name=self.in_type, include_locked=False)
       if not asset_vins:
         return (False, "Not enough assets to fund trade!")
       
@@ -173,10 +173,10 @@ class SwapTrade():
     raw_tx = do_rpc("createrawtransaction", inputs=setup_vins, outputs=setup_vouts)
 
     if self.type == "buy":
-      funded_tx = fund_transaction_final(swap_storage, do_rpc, quantity_required, 0, \
+      funded_tx = fund_transaction_final(do_rpc, quantity_required, 0, \
         rvn_change_addr, setup_vins, setup_vouts, [raw_tx])
     else:
-      funded_tx = fund_transaction_final(swap_storage, do_rpc, 0, 0, \
+      funded_tx = fund_transaction_final(do_rpc, 0, 0, \
         rvn_change_addr, setup_vins, setup_vouts, [raw_tx])
 
     raw_tx = do_rpc("createrawtransaction", inputs=setup_vins, outputs=setup_vouts)
@@ -187,10 +187,10 @@ class SwapTrade():
   def missing_trades(self):
     return self.order_count - len(self.order_utxos)
 
-  def can_create_single_order(self, swap_storage):
-    return self.attempt_fill_trade_pool(swap_storage, max_add=1)
+  def can_create_single_order(self):
+    return self.attempt_fill_trade_pool(max_add=1)
 
-  def order_completed(self, swap_storage, utxo):
+  def order_completed(self, utxo):
     if utxo not in self.order_utxos:
       return None
     self.order_utxos.remove(utxo)

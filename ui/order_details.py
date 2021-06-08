@@ -12,14 +12,15 @@ from util import *
 from rvn_rpc import *
 from ui.ui_prompt import *
 
+from app_instance import AppInstance
 from swap_transaction import SwapTransaction
 
 class OrderDetailsDialog(QDialog):
-  def __init__(self, swap, swap_storage, parent=None, raw_prefill=None, dialog_mode="details", **kwargs):
+  def __init__(self, swap, parent=None, raw_prefill=None, dialog_mode="details", **kwargs):
     super().__init__(parent, **kwargs)
     uic.loadUi("ui/qt/order_details.ui", self)
     self.swap = swap
-    self.swap_storage = swap_storage
+    self.wallet = AppInstance.wallet
     self.dialog_mode = dialog_mode
     self.current_number = 0
     self.last_text = ""
@@ -117,11 +118,11 @@ class OrderDetailsDialog(QDialog):
         asset_qty = self.swap.out_quantity
 
     if asset_needed:
-      if asset_needed not in self.swap_storage.my_asset_names:
+      if asset_needed not in self.wallet.my_asset_names:
         return "You don't own the asset [{}].".format(asset_needed)
-      if asset_qty > self.swap_storage.assets[asset_needed]["balance"]:
-        return "You don't own enough of that asset. Own {}, Need {}".format(self.swap_storage.assets[asset_needed]["balance"], asset_qty)
-    if rvn_qty > self.swap_storage.rvn_balance():
+      if asset_qty > self.wallet.assets[asset_needed]["balance"]:
+        return "You don't own enough of that asset. Own {}, Need {}".format(self.wallet.assets[asset_needed]["balance"], asset_qty)
+    if rvn_qty > self.wallet.rvn_balance():
       return "You don't have enough RVN to purchase."
     return None
 

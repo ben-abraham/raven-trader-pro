@@ -11,10 +11,11 @@ import sys, getopt, argparse, json, time, getpass, os.path
 from util import *
 from rvn_rpc import *
 
+from app_instance import AppInstance
 from swap_transaction import SwapTransaction
 
 class PreviewTransactionDialog(QDialog):
-  def __init__(self, partial_swap, final_swap, swap_storage, preview_title="Confirm Transaction", parent=None, **kwargs):
+  def __init__(self, partial_swap, final_swap, preview_title="Confirm Transaction", parent=None, **kwargs):
     super().__init__(parent, **kwargs)
     uic.loadUi("ui/qt/preview_order.ui", self)
     self.swap = partial_swap
@@ -36,12 +37,12 @@ class PreviewTransactionDialog(QDialog):
       src_addr = src_vout["scriptPubKey"]["addresses"][0]
       is_my_utxo = False
       
-      for my_utxo in swap_storage.utxos:
+      for my_utxo in AppInstance.wallet.utxos:
         if my_utxo["txid"] == vin["txid"] and my_utxo["vout"] == vin["vout"]:
           is_my_utxo = True
           break
-      for my_asset in swap_storage.my_asset_names:
-        for my_a_utxo in swap_storage.assets[my_asset]["outpoints"]:
+      for my_asset in AppInstance.wallet.my_asset_names:
+        for my_a_utxo in AppInstance.wallet.assets[my_asset]["outpoints"]:
           if my_a_utxo["txid"] == vin["txid"] and my_a_utxo["vout"] == vin["vout"]:
             is_my_utxo = True
             break

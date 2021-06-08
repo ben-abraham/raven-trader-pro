@@ -20,11 +20,10 @@ from ui.ui_prompt import *
 
 from server_connection import ServerConnection
 from swap_transaction import SwapTransaction
-from swap_storage import SwapStorage
-from app_settings import AppSettings
+from app_instance import AppInstance
 
 class MainWindow(QMainWindow):
-  def __init__(self, storage, *args, **kwargs):
+  def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     uic.loadUi("ui/qt/main_window.ui", self)
     self.setWindowTitle("Raven Trader Pro")
@@ -34,12 +33,12 @@ class MainWindow(QMainWindow):
     qss_file.close()
     self.setStyleSheet(qss)
 
-    self.settings = AppSettings.instance
-    self.swap_storage = storage
-    self.swap_storage.on_swap_mempool = self.swap_mempool
-    self.swap_storage.on_swap_confirmed = self.swap_confirmed
-    self.swap_storage.on_completed_mempool = self.completed_trade_mempool
-    self.swap_storage.on_completed_confirmed = self.completed_trade_network
+    self.settings = AppInstance.settings
+    self.wallet = AppInstance.wallet
+    self.wallet.on_swap_mempool = self.swap_mempool
+    self.wallet.on_swap_confirmed = self.swap_confirmed
+    self.wallet.on_completed_mempool = self.completed_trade_mempool
+    self.wallet.on_completed_confirmed = self.completed_trade_network
     self.server = ServerConnection()
     self.server_menu = None
 
@@ -61,7 +60,7 @@ class MainWindow(QMainWindow):
   def new_buy_order(self, prefill=None):
     if self.menu_context["type"] == "asset":
       prefill = make_prefill(self.menu_context["data"])
-    buy_dialog = NewOrderDialog("buy", self.swap_storage, prefill=prefill, parent=self)
+    buy_dialog = NewOrderDialog("buy", prefill=prefill, parent=self)
     if(buy_dialog.exec_()):
       buy_swap = buy_dialog.build_trade()
       self.created_order(buy_swap)
@@ -69,7 +68,7 @@ class MainWindow(QMainWindow):
   def new_sell_order(self, prefill=None):
     if self.menu_context["type"] == "asset":
       prefill = make_prefill(self.menu_context["data"])
-    sell_dialog = NewOrderDialog("sell", self.swap_storage, prefill=prefill, parent=self)
+    sell_dialog = NewOrderDialog("sell", prefill=prefill, parent=self)
     if(sell_dialog.exec_()):
       sell_swap = sell_dialog.build_trade()
       self.created_order(sell_swap)
@@ -77,15 +76,15 @@ class MainWindow(QMainWindow):
   def new_trade_order(self, prefill=None):
     if self.menu_context["type"] == "asset":
       prefill = make_prefill(self.menu_context["data"])
-    trade_dialog = NewTradeDialog(self.swap_storage, prefill=prefill, parent=self)
+    trade_dialog = NewTradeDialog(prefill=prefill, parent=self)
     if(trade_dialog.exec_()):
       trade_swap = trade_dialog.build_trade()
       self.created_order(trade_swap)
 
   def created_order(self, trade):
     print("New {}: {}".format(trade.type, json.dumps(trade.__dict__)))
-    self.swap_storage.add_swap(trade)
-    self.swap_storage.save_data()
+    self.wallet.add_swap(trade)
+    self.wallet.save_data()
     self.update_lists()
     self.view_trade_details(trade)
 
@@ -95,7 +94,7 @@ class MainWindow(QMainWindow):
     if confirm:
       if show_prompt("Remove Trade?", "Are you sure you want to remove this trade?") == QMessageBox.No:
         return
-    self.swap_storage.remove_swap(self.menu_context["data"])
+    self.wallet.remove_swap(self.menu_context["data"])
     self.actionRefresh.trigger()
 
   def action_view_trade(self, force=True):
@@ -131,7 +130,7 @@ class MainWindow(QMainWindow):
     if confirm:
       if show_prompt("Remove Trade?", "Are you sure you want to remove this order?") == QMessageBox.No:
         return
-    self.swap_storage.remove_completed(self.menu_context["data"])
+    self.wallet.remove_completed(self.menu_context["data"])
     self.actionRefresh.trigger()
 
   def action_view_order(self):
@@ -152,7 +151,7 @@ class MainWindow(QMainWindow):
     self.action_view_order()
 
   def action_reset_locks(self):
-    self.swap_storage.refresh_locks(clear=True)
+    self.wallet.refresh_locks(clear=True)
     self.actionRefresh.trigger()
 
   def view_online_cryptoscope(self):
@@ -250,13 +249,13 @@ class MainWindow(QMainWindow):
       if setup_all == QMessageBox.Cancel:
         return (False, None)
     check_unlock()
-    pool_filled = trade.attempt_fill_trade_pool(self.swap_storage, max_add=setup_max)
+    pool_filled = trade.attempt_fill_trade_pool(max_add=setup_max)
     if not pool_filled:
-      (setup_success, setup_result) = trade.setup_trade(self.swap_storage, max_add=setup_max)
+      (setup_success, setup_result) = trade.setup_trade(max_add=setup_max)
       if setup_success and setup_result:
         setup_txid = self.preview_complete(setup_result, "Setup Trade Order")
         if setup_txid:
-          self.swap_storage.add_waiting(setup_txid, self.setup_mempool_confirmed, self.setup_network_confirmed, callback_data=trade)
+          self.wallet.add_waiting(setup_txid, self.setup_mempool_confirmed, self.setup_network_confirmed, callback_data=trade)
           self.actionRefresh.trigger()
           return (True, setup_txid)
           #Wait for confirmation, then run this again.
@@ -273,15 +272,15 @@ class MainWindow(QMainWindow):
       return (True, None)
 
   def complete_order(self, _=None, hex_prefill=None):
-    order_dialog = OrderDetailsDialog(None, self.swap_storage, parent=self, raw_prefill=hex_prefill, dialog_mode="complete")
+    order_dialog = OrderDetailsDialog(None, parent=self, raw_prefill=hex_prefill, dialog_mode="complete")
     if(order_dialog.exec_()):
       partial_swap = order_dialog.build_order()
-      finished_swap = partial_swap.complete_order(self.swap_storage)
+      finished_swap = partial_swap.complete_order()
       if finished_swap:
         print("Swap: ", json.dumps(partial_swap.__dict__))
         sent_txid = self.preview_complete(finished_swap, "Confirm Transaction [2/2]")
         if sent_txid:
-          self.swap_storage.swap_executed(partial_swap, sent_txid)
+          self.wallet.swap_executed(partial_swap, sent_txid)
           
   def execute_server_orders(self, orders):
     orders_hex = [b64_to_hex(order["b64SignedPartial"]) for order in orders if "b64SignedPartial" in order]
@@ -290,12 +289,12 @@ class MainWindow(QMainWindow):
     elif len(orders) > 1:
       check_unlock()
       parsed_orders = [SwapTransaction.decode_swap(order_hex) for order_hex in orders_hex]
-      composite_trade = SwapTransaction.composite_transactions(self.swap_storage, parsed_orders)
+      composite_trade = SwapTransaction.composite_transactions(parsed_orders)
       print(parsed_orders)
       print(composite_trade)
   
   def preview_complete(self, raw_tx, message, swap=None):
-    preview_dialog = PreviewTransactionDialog(swap, raw_tx, self.swap_storage, preview_title=message, parent=self)
+    preview_dialog = PreviewTransactionDialog(swap, raw_tx, preview_title=message, parent=self)
     if preview_dialog.exec_():
       print("Transaction Approved. Sending!")
       submitted_txid = do_rpc("sendrawtransaction", hexstring=raw_tx)
@@ -306,7 +305,7 @@ class MainWindow(QMainWindow):
     (success, result) = self.setup_trades(trade, force_order)
     if success:
       if result == None:
-        details = OrderDetailsDialog(trade, self.swap_storage, parent=self, dialog_mode="multiple")
+        details = OrderDetailsDialog(trade, parent=self, dialog_mode="multiple")
         return details.exec_()
       elif result:
         show_dialog("Sent", "Transaction has been submitted. Please try again soon.", result, self)
@@ -314,13 +313,13 @@ class MainWindow(QMainWindow):
       show_error("Error", "Transactions could not be setup for trade.", result, self)
 
   def view_order_details(self, swap):
-    details = OrderDetailsDialog(swap, self.swap_storage, parent=self, dialog_mode="single")
+    details = OrderDetailsDialog(swap, parent=self, dialog_mode="single")
     return details.exec_()
 
   def update_order_details(self, widget):
     list = widget.listWidget()
     swap_row = list.itemWidget(widget)
-    details = OrderDetailsDialog(swap_row.get_data(), self.swap_storage, parent=self, dialog_mode="update")
+    details = OrderDetailsDialog(swap_row.get_data(), parent=self, dialog_mode="update")
     return (details.exec_(), details.spnUpdateUnitPrice.value())
 
 #
@@ -349,7 +348,7 @@ class MainWindow(QMainWindow):
     #Naive approach, just lock the UTXO's immediately once we see it confirmed in mempool.
     for i in range(0, trade.missing_trades()):
       utxo_data = vout_to_utxo(transaction["vout"][i], txid, i)
-      trade.add_utxo_to_pool(self.swap_storage, utxo_data)
+      trade.add_utxo_to_pool(utxo_data)
     self.actionRefresh.trigger()
 
   def setup_network_confirmed(self, transaction, trade):
@@ -363,15 +362,15 @@ class MainWindow(QMainWindow):
   def update_rpc_connection(self, _, index, connection):
     #Save any changes to swaps
     old_index = self.settings.rpc_index()
-    self.swap_storage.save_data()
+    self.wallet.save_data()
     self.settings.set_rpc_index(index)
     if test_rpc_status():
       print("Switching RPC")
       self.lstMyAssets.clear()#Fully clear lists to fix bugs
       self.lstAllOrders.clear()
       self.lstPastOrders.clear()
-      self.swap_storage.invalidate_all()
-      self.swap_storage.load_data()
+      self.wallet.invalidate_all()
+      self.wallet.load_data()
       self.actionRefresh.trigger()
     else:
       print("Error testing RPC")
@@ -383,20 +382,20 @@ class MainWindow(QMainWindow):
 #
 
   def update_status(self):
-    num_waiting = self.swap_storage.num_waiting()
+    num_waiting = self.wallet.num_waiting()
     if num_waiting == 0:
       self.statusBar().clearMessage()
     elif num_waiting == 1:
-      first_waiting = self.swap_storage.waiting[0]
+      first_waiting = self.wallet.waiting[0]
       self.statusBar().showMessage("Waiting on 1 TX: {}".format(first_waiting[0]))
     else:
       self.statusBar().showMessage("Waiting on {} TXs".format(num_waiting))
 
   def refresh_main_window(self):
-    self.swap_storage.update_wallet()
+    self.wallet.update_wallet()
 
-    avail_balance = self.swap_storage.available_balance
-    total_balance = self.swap_storage.total_balance
+    avail_balance = self.wallet.available_balance
+    total_balance = self.wallet.total_balance
 
     self.lblBalanceTotal.setText("Total Balance: {:.8g} RVN [{:.8g} Assets]".format(total_balance[0], total_balance[2]))
     self.lblBalanceAvailable.setText("Total Available: {:.8g} RVN [{:.8g} Assets]".format(avail_balance[0], avail_balance[2]))
@@ -414,12 +413,12 @@ class MainWindow(QMainWindow):
       self.menuConnection.addAction(rpc_action)
 
   def update_lists(self):
-    self.add_update_trade_items(self.lstAllOrders, self.swap_storage.swaps)
+    self.add_update_trade_items(self.lstAllOrders, self.wallet.swaps)
 
-    self.add_update_swap_items(self.lstPastOrders,      [swap for swap in self.swap_storage.history if (swap.state in ["pending", "completed"]) and swap.own      ])
-    self.add_update_swap_items(self.lstCompletedOrders, [swap for swap in self.swap_storage.history if (swap.state in ["pending", "completed"]) and not swap.own  ])
+    self.add_update_swap_items(self.lstPastOrders,      [swap for swap in self.wallet.history if (swap.state in ["pending", "completed"]) and swap.own      ])
+    self.add_update_swap_items(self.lstCompletedOrders, [swap for swap in self.wallet.history if (swap.state in ["pending", "completed"]) and not swap.own  ])
 
-    self.add_update_asset_items(self.lstMyAssets,       [self.swap_storage.assets[asset_name] for asset_name in self.swap_storage.my_asset_names])
+    self.add_update_asset_items(self.lstMyAssets,       [self.wallet.assets[asset_name] for asset_name in self.wallet.my_asset_names])
 
   def add_update_asset_items(self, list, asset_list):
     self.add_udpate_items(list, asset_list, lambda x: x["name"], QTwoLineRowWidget.from_asset, self.open_asset_menu)

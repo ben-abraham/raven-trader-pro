@@ -14,16 +14,12 @@ from rvn_rpc import *
 from swap_transaction import SwapTransaction
 from swap_trade import SwapTrade
 from app_settings import AppSettings
+from app_instance import AppInstance
 
-class SwapStorage:
-  instance = None
+class WalletManager:
 
   def __init__ (self):
     super()
-    SwapStorage.instance = self
-    self.swaps = []
-    self.locks = []
-    self.history = []
     self.waiting = [] #Waiting on confirmation
     self.trigger_cache = []
     self.on_swap_mempool = None
@@ -44,25 +40,22 @@ class SwapStorage:
 # File I/O
 #
   def load_data(self):
-    loaded_data = load_json(self.get_path(), dict, "Storage")
-    self.swaps = init_list(loaded_data["trades"], SwapTrade) if "trades" in loaded_data else []
-    self.locks = init_list(loaded_data["locks"], dict) if "locks" in loaded_data else []
-    self.history = init_list(loaded_data["history"], SwapTransaction) if "history" in loaded_data else []
+    #TODO: Replace all local member access with app_storage directly?
+    AppInstance.storage.load_data()
+    self.swaps =     AppInstance.storage.swaps
+    self.locks =     AppInstance.storage.locks
+    self.history =   AppInstance.storage.history
+    self.addresses = AppInstance.storage.addresses
     #TODO: Better way to handle post-wallet-load events
     self.check_missed_history()
 
   def save_data(self):
-    save_payload = {
-      "trades": self.swaps,
-      "locks": self.locks,
-      "history": self.history
-    }
-    save_json(self.get_path(), save_payload)
-
-  def get_path(self):
-    base_path = os.path.expanduser(AppSettings.instance.read("data_path"))
-    ensure_directory(base_path)
-    return os.path.join(base_path, AppSettings.instance.rpc_save_path())
+    #Needed?
+    AppInstance.storage.swaps = self.swaps
+    AppInstance.storage.locks = self.locks
+    AppInstance.storage.history = self.history
+    AppInstance.storage.addresses = self.addresses
+    AppInstance.storage.save_data()
 
 #
 # Basic Operations
@@ -470,3 +463,78 @@ class SwapStorage:
       if expected in swap.order_utxos:
         return True
     return False
+
+
+#
+#Chain helper functions
+#
+
+#2 hex chars = 1 byte, 0.01 RVN/kb feerate
+def calculate_fee(transaction_hex):
+  return calculated_fee_from_size(len(transaction_hex) / 2)
+
+def calculated_fee_from_size(size):
+  return AppSettings.instance.fee_rate() * (size / 1024)
+
+#TransactionOverhead         = 12             // 4 version, 2 segwit flag, 1 vin, 1 vout, 4 lock time
+#InputSize                   = 148            // 4 prev index, 32 prev hash, 4 sequence, 1 script size, ~107 script witness
+#OutputOverhead              = 9              // 8 value, 1 script size
+#P2PKHScriptPubkeySize       = 25             // P2PKH size
+#P2PKHReplayScriptPubkeySize = 63             // P2PKH size with replay protection
+def calculate_size(vins, vouts):
+  return 12 + (len(vins) * 148) + (len(vouts) * (9 + 25))
+
+def fund_asset_transaction_raw(fn_rpc, asset_name, quantity, vins, vouts):
+  #Search for enough asset UTXOs
+  (asset_utxo_total, asset_utxo_set) = AppInstance.wallet.find_utxo_set("asset", quantity, name=asset_name, include_locked=True)
+  #Add our asset input(s)
+  for asset_utxo in asset_utxo_set:
+    vins.append({"txid":asset_utxo["txid"], "vout":asset_utxo["vout"]})
+
+  #Add asset change if needed
+  if(asset_utxo_total > quantity):
+    #TODO: Send change to address the asset UTXO was originally sent to
+    asset_change_addr = fn_rpc("getnewaddress") #cheat to get rpc in this scope
+    print("Asset change being sent to {}".format(asset_change_addr))
+    vouts[asset_change_addr] = make_transfer(asset_name, asset_utxo_total - quantity)
+
+def fund_transaction_final(fn_rpc, send_rvn, recv_rvn, target_addr, vins, vouts, original_txs):
+  cost = send_rvn #Cost represents rvn sent to the counterparty, since we adjust send_rvn later
+  
+  #If this is a swap, we need to add pseduo-funds for fee calc
+  if recv_rvn == 0 and send_rvn == 0:
+    #Add dummy output for fee calc
+    vouts[target_addr] = round(sum([calculate_fee(tx) for tx in original_txs]) * 4, 8)
+    
+  if recv_rvn > 0 and send_rvn == 0:
+    #If we are not supplying rvn, but expecting it, we need to subtract fees from that only
+    #So add our output at full value first
+    vouts[target_addr] = round(recv_rvn, 8)
+
+  #Make an initial guess on fees, quadruple should be enough to estimate actual fee post-sign
+  fee_guess = calculated_fee_from_size(calculate_size(vins, vouts)) * 4
+  send_rvn += fee_guess #add it to the amount required in the UTXO set
+
+  print("Funding Raw Transaction. Send: {:.8g} RVN. Get: {:.8g} RVN".format(send_rvn, recv_rvn))
+  
+  if send_rvn > 0:
+    #Determine a valid UTXO set that completes this transaction
+    (utxo_total, utxo_set) = AppInstance.wallet.find_utxo_set("rvn", send_rvn)
+    if utxo_set is None:
+      show_error("Not enough UTXOs", "Unable to find a valid UTXO set for {:.8g} RVN".format(send_rvn))
+      return False
+    send_rvn = utxo_total #Update for the amount we actually supplied
+    for utxo in utxo_set:
+      vins.append({"txid":utxo["txid"],"vout":utxo["vout"]})
+
+  #Then build and sign raw to estimate fees
+  sizing_raw = fn_rpc("createrawtransaction", inputs=vins, outputs=vouts)
+  sizing_raw = fn_rpc("combinerawtransaction", txs=[sizing_raw] + original_txs)
+  sizing_signed = fn_rpc("signrawtransaction", hexstring=sizing_raw) #Need to calculate fees against signed message
+  fee_rvn = calculate_fee(sizing_signed["hex"])
+  out_rvn = (send_rvn + recv_rvn) - cost - fee_rvn
+  vouts[target_addr] = round(out_rvn, 8)
+
+  print("Funding result: Send: {:.8g} Recv: {:.8g} Fee: {:.8g} Change: {:.8g}".format(send_rvn, recv_rvn, fee_rvn, out_rvn))
+
+  return True

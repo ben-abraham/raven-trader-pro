@@ -81,8 +81,8 @@ class SwapTransaction():
     self.raw = signed_raw["hex"]
     return self.raw
 
-  def consutrct_invalidate_tx(self, swap_storage, new_destination=None):
-    self_utxo = swap_storage.search_utxo(self.utxo)
+  def consutrct_invalidate_tx(self, new_destination=None):
+    self_utxo = AppInstance.wallet.search_utxo(self.utxo)
     print(self_utxo)
     lock_vin = [{"txid":self_utxo["utxo"]["txid"],"vout":self_utxo["utxo"]["vout"]}]
     lock_vout = None
@@ -103,7 +103,7 @@ class SwapTransaction():
     return signed_raw
 
   #This is run by Bob when he wants to complete an order
-  def complete_order(self, swap_storage):
+  def complete_order(self):
     final_vin = [{"txid":self.decoded["vin"]["txid"], "vout":self.decoded["vin"]["vout"], "sequence":self.decoded["vin"]["sequence"]}]
     final_vout = {self.destination:self.decoded["vout_data"]}
 
@@ -143,7 +143,7 @@ class SwapTransaction():
         .format(self.out_quantity, self.asset(), self.total_price()))
       
       #Add needed asset inputs
-      fund_asset_transaction_raw(swap_storage, do_rpc, self.out_type, self.out_quantity, final_vin, final_vout)
+      fund_asset_transaction_raw(do_rpc, self.out_type, self.out_quantity, final_vin, final_vout)
       #Designate how much rvn we expect to get      
       recv_rvn = self.total_price()
       
@@ -159,7 +159,7 @@ class SwapTransaction():
       #Send output assets to target_addr
       final_vout[target_addr] = make_transfer(self.in_type, self.in_quantity)
       #Add needed asset inputs
-      fund_asset_transaction_raw(swap_storage, do_rpc, self.out_type, self.out_quantity, final_vin, final_vout)
+      fund_asset_transaction_raw(do_rpc, self.out_type, self.out_quantity, final_vin, final_vout)
 
     ##  Unkown order type
     else:
@@ -170,7 +170,7 @@ class SwapTransaction():
     rvn_addr = target_addr if self.type == "buy" else do_rpc("getnewaddress")
 
     #Add needed ins/outs needed to handle the rvn disbalance in the transaction
-    funded_finale = fund_transaction_final(swap_storage, do_rpc, send_rvn, recv_rvn, rvn_addr, final_vin, final_vout, [self.raw])
+    funded_finale = fund_transaction_final(do_rpc, send_rvn, recv_rvn, rvn_addr, final_vin, final_vout, [self.raw])
     if not funded_finale:
       raise Exception("Funding raw transaction failed")
 
@@ -207,7 +207,7 @@ class SwapTransaction():
     return tx_final
   
   @staticmethod
-  def composite_transactions(swap_storage, swaps):
+  def composite_transactions(swaps):
     total_inputs = {}
     total_outputs = {}
     canceled_assets = {}
@@ -252,7 +252,7 @@ class SwapTransaction():
       if supply_asset == "rvn":
         send_rvn = total_outputs["rvn"]
       else:
-        fund_asset_transaction_raw(swap_storage, do_rpc, supply_asset, total_outputs[supply_asset], mega_tx_vins, mega_tx_vouts)
+        fund_asset_transaction_raw(do_rpc, supply_asset, total_outputs[supply_asset], mega_tx_vins, mega_tx_vouts)
 
     for recieve_asset in total_inputs.keys():
       if recieve_asset == "rvn":
@@ -268,7 +268,7 @@ class SwapTransaction():
     original_hexs = [swap.raw for swap in swaps]
 
     final_addr = do_rpc("getnewaddress")
-    funded = fund_transaction_final(swap_storage, do_rpc, send_rvn, recv_rvn, final_addr, mega_tx_vins, mega_tx_vouts, original_hexs)
+    funded = fund_transaction_final(do_rpc, send_rvn, recv_rvn, final_addr, mega_tx_vins, mega_tx_vouts, original_hexs)
 
     if not funded:
       raise Exception("Funding error")
