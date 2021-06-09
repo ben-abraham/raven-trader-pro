@@ -35,6 +35,7 @@ class AppInstance:
   def on_close():
     AppInstance.wallet.on_close()
     AppInstance.storage.on_close()
+    AppInstance.settings.on_close()
 
   @staticmethod
   def on_exit(error=None):
