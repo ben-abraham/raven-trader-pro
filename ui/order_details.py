@@ -138,7 +138,7 @@ class OrderDetailsDialog(QDialog):
 
     (parsed, response) = SwapTransaction.decode_swap(new_text)
     if parsed:
-      self.swap = parsed
+      self.swap = response
       self.update_for_swap(self.swap)
       err = self.swap_error()
       if err:
