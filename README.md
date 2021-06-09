@@ -35,20 +35,20 @@ rpcpassword=<password>
 4. For trades, select the asset you are providing, and confirm the one you want.
 5. Enter the quantity and per-unit price for the order (NOTE: Executors must complete the order in full. Use Order Quantity to split up bulk orders)
 6. Set Order Quantity to the number of copies of this trade you want to make
-7. [Optional] Specify a destination for where the output RVN/Assets should be sent. If not supplied one will be automatically generated like normal.
-8. [TX-Fee] Either setup all trades now in bulk, or set them up one-at-a-time. (One-at-a-time will have more fee overhead in the long run)
+7. [**Optional**] Specify a destination for where the output RVN/Assets should be sent. If not supplied one will be automatically generated like normal.
+8. [**TX-Fee**] Either setup all trades now in bulk, or set them up one-at-a-time. (One-at-a-time will have more fee overhead in the long run)
 9. Wait for confirmation (Indicated in bottom-left)
-10. [Online] If posting online, right-click the trade and "Post trade(s) to Server"
-11. [P2P] If sending direct, double-click the trade and send the "Signed Partial" hex to the counterparty
+10. [**Online**] If posting online, right-click the trade and "Post trade(s) to Server"
+11. [**P2P**] If sending direct, double-click the trade and send the "Signed Partial" hex to the counterparty
 12. Trades will stay in the list until removed, each execution is added to the history. When a trade reaches 0/0 remaining, you can refill the pool or delete it.
 
 ## Completing an Order ##
 
-1. [Online] Find a trade in the "Trade Server" dialog
-2. [P2P] Click "Verify/Complete Order", Paste the hex provided into the "Signed Partial" field.
+1. [**Online**] Find a trade in the "Trade Server" dialog
+2. [**P2P**] Click "Verify/Complete Order", Paste the hex provided into the "Signed Partial" field.
 3. Verify all the order details look as-advertised (make sure the asset name, quantity and unit-price all line up) and Cofirm
 4. Verify the final preview order looks accurate.
-5. Execute when ready
+5. [**TX-Fee**] Execute when ready
 
 ## Important Considerations ##
 
@@ -81,7 +81,7 @@ rpcpassword=<password>
 - [ ] Hard-Remove Trade Order (Invalidate the previous UTXO by using it in a transaction to yourself.) [Code exists but was removed with the bulk order changes]
 - [x] Settings menu
 - [x] -- RPC Connections
-- [ ] -- Preferred rvn/asset destination address
+- [ ] -- Preferred rvn/asset destination address (uses address pooling currently)
 - [ ] -- Previous order history age (remove records after x days)
 - [ ] -- Adjustable fee rate for optionally faster confirmation
 - [ ] IPFS content preview
@@ -92,8 +92,10 @@ There is a companion repository [raven-trader-server](https://github.com/ben-abr
 
 ### Client Features ###
 
-- [ ] Post orders to API
-- [ ] Purchase from API
+- [x] Post orders to API
+- [x] View orders from API
+- [x] Search orders from API
+- [x] Purchase from API
 - [ ] Preview historical asset prices on buy/sell
 - [ ] Local automated purchase/sale at specific price (you are executing and therefore paying fees, but get guaranteed execution if there is an available order at a given price)
 
