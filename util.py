@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import sys, getopt, argparse, json, time, getpass, os.path, datetime, shutil, base64, webbrowser
+import os, sys, getopt, argparse, json, time, getpass, os.path, datetime, shutil, base64, webbrowser, subprocess
 
 from ui.ui_prompt import *
 
@@ -42,6 +42,14 @@ def make_prefill(asset, quantity=1, unit_price=1):
 #
 #Helper function
 #
+
+def open_file(filename):
+  print("Opening system file for editing: ", filename)
+  if sys.platform == "win32":
+    os.startfile(filename)
+  else:
+    opener = "open" if sys.platform == "darwin" else "xdg-open"
+    subprocess.call([opener, filename])
 
 def do_url(url):
   webbrowser.open(url)

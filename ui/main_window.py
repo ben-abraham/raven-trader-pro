@@ -288,7 +288,8 @@ class MainWindow(QMainWindow):
       self.complete_order(hex_prefill=orders_hex[0])
     elif len(orders) > 1:
       check_unlock()
-      parsed_orders = [SwapTransaction.decode_swap(order_hex) for order_hex in orders_hex]
+      #decode_swap returns (succes, result)
+      parsed_orders = [SwapTransaction.decode_swap(order_hex)[1] for order_hex in orders_hex]
       composite_trade = SwapTransaction.composite_transactions(parsed_orders)
       print(parsed_orders)
       print(composite_trade)
@@ -363,6 +364,7 @@ class MainWindow(QMainWindow):
     #Save any changes to swaps
     old_index = self.settings.rpc_index()
     AppInstance.on_close()
+    self.updateTimer.stop()
     self.settings.set_rpc_index(index)
     if test_rpc_status():
       print("Switching RPC")
@@ -375,6 +377,7 @@ class MainWindow(QMainWindow):
       print("Error testing RPC")
       self.settings.set_rpc_index(old_index)
     self.update_dynamic_menus()
+    self.updateTimer.start(self.settings.read("update_interval"))
 
 #
 # Updating

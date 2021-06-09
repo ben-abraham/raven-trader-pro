@@ -136,7 +136,7 @@ class OrderDetailsDialog(QDialog):
     if not re.search("^[0-9a-fA-F]*$", new_text):
       return
 
-    parsed = SwapTransaction.decode_swap(new_text)
+    (parsed, response) = SwapTransaction.decode_swap(new_text)
     if parsed:
       self.swap = parsed
       self.update_for_swap(self.swap)
@@ -146,6 +146,10 @@ class OrderDetailsDialog(QDialog):
         self.confirm_button.setVisible(False)
       else:
         self.confirm_button.setVisible(True)
+    else:
+      show_error("Transaction Error!", response, parent=self)
+      self.confirm_button.setVisible(False)
+
 
     self.confirm_button.setEnabled(self.swap is not None)
 

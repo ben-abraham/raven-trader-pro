@@ -36,22 +36,24 @@ def save_json(path, data):
   fSwap.close()
 
 class AppSettings:
-  instance = None
 
   def __init__ (self):
     super()
-    AppSettings.instance = self
     self.settings = {}
   
   def on_load(self):
     self.load_settings()
-    self.load_defaults()
-    self.save_settings() #Save and created defaults
+    first_launch = self.load_defaults()
+    self.save_settings() #Save any created defaults
+    return first_launch
+    
 
   def on_close(self):
     self.save_settings()
 
   def load_defaults(self):
+    first_launch = (self.settings == {})
+
     self.init_setting("rpc_connections", [
       {"title": "Local Mainnet", "user": "", "password": "", "unlock": "", "host": "127.0.0.1", "port": 8766, "testnet": False},
       {"title": "Local Testnet", "user": "", "password": "", "unlock": "", "host": "127.0.0.1", "port": 18766, "testnet": True},
@@ -65,19 +67,22 @@ class AppSettings:
     self.init_setting("update_interval", 5000)
     self.init_setting("server_url", "https://raventrader.net")
 
+    return first_launch
 #
 # File I/O
 #
 
   def load_settings(self):
-    load_path = os.path.expanduser(SETTINGS_STORAGE_PATH)
-    self.settings = load_json(load_path, None, "Settings", default={})
+    self.settings = load_json(self.get_path(), None, "Settings", default={})
     return self.settings
 
   def save_settings(self):
-    save_path = os.path.expanduser(SETTINGS_STORAGE_PATH)
-    ensure_directory(os.path.dirname(save_path))
-    save_json(save_path, self.settings)
+    save_json(self.get_path(), self.settings)
+
+  def get_path(self):
+    path = os.path.expanduser(SETTINGS_STORAGE_PATH)
+    ensure_directory(os.path.dirname(path))
+    return path
 
   def init_setting(self, setting_name, init_value):
     self.write_setting(setting_name, self.read_setting(setting_name, init_value))

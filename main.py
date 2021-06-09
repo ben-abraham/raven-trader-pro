@@ -17,11 +17,11 @@ from rvn_rpc import *
 if __name__ == "__main__":
   #Settings need to be loaded seperately
   AppInstance.settings = AppSettings()
-  AppInstance.settings.on_load()
+  first_launch = AppInstance.settings.on_load()
 
   app = QApplication(sys.argv)
 
-  if test_rpc_status():
+  if test_rpc_status(first_launch):
     AppInstance.on_init()
     #Finally init/run main window
     window = MainWindow()

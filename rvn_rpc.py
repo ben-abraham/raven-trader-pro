@@ -8,14 +8,13 @@ from PyQt5.QtWidgets import *
 from PyQt5 import uic
 from ui.ui_prompt import *
 
-import sys, getopt, argparse, json, time, getpass, os.path
+import sys, getopt, argparse, json, time, getpass, os, os.path, webbrowser
 from util import *
 
-from app_settings import AppSettings
 
-def test_rpc_status():
+def test_rpc_status(first_launch=False):
   #Then do a basic test of RPC, also can check it is synced here
-  chain_info = do_rpc("getblockchaininfo")
+  chain_info = do_rpc("getblockchaininfo", log_error=False)
   #If the headers and blocks are not within 5 of each other,
   #then the chain is likely still syncing
   chain_updated = False if not chain_info else\
@@ -23,24 +22,33 @@ def test_rpc_status():
   
   if chain_info and chain_updated:
     #Determine if we are on testnet, and write back to settings.
-    AppSettings.instance.rpc_set_testnet(chain_info["chain"] == "test")
+    AppInstance.settings.rpc_set_testnet(chain_info["chain"] == "test")
     return True
+  elif first_launch:
+    open_settings =  show_prompt("First Launch Detected", 
+    "First application launch detected.\r\n"+
+    "Settings file is located at '{}'\r\n".format(AppInstance.settings.get_path())+
+    "Would you like to open the settings file?")
+    if open_settings == QMessageBox.Yes:
+      open_file(AppInstance.settings.get_path())
   elif chain_info:
     show_error("Sync Error", 
     "Server appears to not be fully synchronized. Must be at the latest tip to continue.",
     "Network: {}\r\nCurrent Headers: {}\r\nCurrent Blocks: {}".format(chain_info["chain"], chain_info["headers"], chain_info["blocks"]))
   else:
     show_error("Error connecting", 
-    "Error connecting to RPC server.\r\n{}".format(AppSettings.instance.rpc_url()), 
+    "Error connecting to RPC server.\r\n{}".format(AppInstance.settings.rpc_url()), 
+    "Settings file is located at: '{}'\r\n".format(AppInstance.settings.get_path())+
+    "Close app when editing settings file!\r\n\r\n"+
     "Make sure the following configuration variables are in your raven.conf file"+
-    "\r\n\r\nserver=1\r\nrpcuser={}\r\nrpcpassword={}".format(AppSettings.instance.rpc_details()["user"], AppSettings.instance.rpc_details()["password"]))
+    "\r\n\r\nserver=1\r\nrpcuser={}\r\nrpcpassword={}".format(AppInstance.settings.rpc_details()["user"], AppInstance.settings.rpc_details()["password"]))
   return False
 
 def do_rpc(method, log_error=True, **kwargs):
   req = Request(method, **kwargs)
   try:
-    url = AppSettings.instance.rpc_url()
-    resp = post(url, json=req)
+    url = AppInstance.settings.rpc_url()
+    resp = post(url, json=req, timeout=10)
     if resp.status_code != 200 and log_error:
       print("RPC ==>", end="")
       print(req)
@@ -49,6 +57,16 @@ def do_rpc(method, log_error=True, **kwargs):
     if resp.status_code != 200:
       return None
     return json.loads(resp.text)["result"]
+  except TimeoutError:
+    if log_error:
+      #Any RPC timeout errors are totally fatal
+      print("RPC Timeout")
+      AppInstance.on_exit()
+      show_error("RPC Timeout", "Timeout contacting RPC")
+      exit(-1)
+      return None
+    else:
+      return None
   except:
     print("RPC Error")
     return None
@@ -58,7 +76,7 @@ def decode_full(txid):
   if local_decode:
     result = local_decode
   else:
-    rpc = AppSettings.instance.rpc_details()
+    rpc = AppInstance.settings.rpc_details()
     #TODO: Better way of handling full decode
     tx_url = "https://rvnt.cryptoscope.io/api/getrawtransaction/?txid={}&decode=1" if rpc["testnet"]\
       else "https://rvn.cryptoscope.io/api/getrawtransaction/?txid={}&decode=1"
@@ -70,7 +88,7 @@ def decode_full(txid):
   return result
 
 def check_unlock(timeout = 10):
-  rpc = AppSettings.instance.rpc_details()
+  rpc = AppInstance.settings.rpc_details()
   phrase_test = do_rpc("help", command="walletpassphrase")
   #returns None if no password set
   if(phrase_test.startswith("walletpassphrase")):
@@ -109,3 +127,6 @@ def asset_details(asset_name):
     asset_name = asset_name[:-1]#Take all except !
   details = do_rpc("getassetdata", asset_name=asset_name)
   return (admin, details)
+
+  
+from app_instance import AppInstance

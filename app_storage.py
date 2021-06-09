@@ -13,7 +13,7 @@ from rvn_rpc import *
 
 from swap_transaction import SwapTransaction
 from swap_trade import SwapTrade
-from app_settings import AppSettings
+from app_instance import AppInstance
 
 class AppStorage:
 
@@ -50,6 +50,6 @@ class AppStorage:
     save_json(self.get_path(), save_payload)
 
   def get_path(self):
-    base_path = os.path.expanduser(AppSettings.instance.read("data_path"))
+    base_path = os.path.expanduser(AppInstance.settings.read("data_path"))
     ensure_directory(base_path)
-    return os.path.join(base_path, AppSettings.instance.rpc_save_path())
+    return os.path.join(base_path, AppInstance.settings.rpc_save_path())

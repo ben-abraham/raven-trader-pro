@@ -12,7 +12,6 @@ from util import *
 from rvn_rpc import *
 
 from app_instance import AppInstance
-from app_settings import AppSettings
 
 SERVER_TYPE_BUY = 0
 SERVER_TYPE_SELL = 1
@@ -24,7 +23,7 @@ class ServerConnection:
     super()
 
   def get_url(self, subpath):
-    base_url = AppSettings.instance.read("server_url")
+    base_url = AppInstance.settings.read("server_url")
     if not base_url:
       return None
     return "{}/{}".format(base_url, subpath)

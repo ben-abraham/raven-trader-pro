@@ -9,11 +9,6 @@ from PyQt5 import uic
 
 import sys, getopt, argparse, json, time, getpass, os.path
 from util import *
-from rvn_rpc import *
-
-from app_settings import AppSettings
-from app_instance import AppInstance
-from wallet_addresses import WalletAddresses
 
 class WalletManager:
 
@@ -146,14 +141,14 @@ class WalletManager:
 
   def wallet_prepare_transaction(self):
     print("Preparing for a transaction")
-    if AppSettings.instance.lock_mode():
+    if AppInstance.settings.lock_mode():
       print("Locking")
     else:
       print("Non-Locking")
 
   def wallet_completed_transaction(self):
     print("Completed a transaction")
-    if AppSettings.instance.lock_mode():
+    if AppInstance.settings.lock_mode():
       print("Locking")
     else:
       print("Non-Locking")
@@ -219,7 +214,7 @@ class WalletManager:
     do_rpc("lockunspent", unlock=not lock, transactions=[{"txid":txid,"vout":vout}])
 
   def load_wallet_locked(self):
-    if AppSettings.instance.lock_mode():
+    if AppInstance.settings.lock_mode():
       wallet_locks = do_rpc("listlockunspent")
       wallet_utxos = []
       for lock in wallet_locks:
@@ -293,7 +288,7 @@ class WalletManager:
     if txout:
       utxo = vout_to_utxo(txout, txid, vout)
       self.locks.append(utxo)
-      if AppSettings.instance.lock_mode():
+      if AppInstance.settings.lock_mode():
         self.wallet_lock_single(txid, vout)
 
   def remove_lock(self, txid=None, vout=None, utxo=None):
@@ -308,7 +303,7 @@ class WalletManager:
       return
     print("Unlocking UTXO {}-{}".format(txid, vout))
     #in wallet-lock mode we need to return these to the wallet
-    if AppSettings.instance.lock_mode():
+    if AppInstance.settings.lock_mode():
       self.wallet_lock_single(txid, vout, lock=False)
 
   def refresh_locks(self, clear=False):
@@ -318,7 +313,7 @@ class WalletManager:
     for swap in self.swaps:
       for utxo in swap.order_utxos:
         self.add_lock(utxo=utxo)
-    if AppSettings.instance.lock_mode():
+    if AppInstance.settings.lock_mode():
       self.wallet_lock_all_swaps()
 
   def lock_quantity(self, type):
@@ -472,7 +467,7 @@ def calculate_fee(transaction_hex):
   return calculated_fee_from_size(len(transaction_hex) / 2)
 
 def calculated_fee_from_size(size):
-  return AppSettings.instance.fee_rate() * (size / 1024)
+  return AppInstance.settings.fee_rate() * (size / 1024)
 
 #TransactionOverhead         = 12             // 4 version, 2 segwit flag, 1 vin, 1 vout, 4 lock time
 #InputSize                   = 148            // 4 prev index, 32 prev hash, 4 sequence, 1 script size, ~107 script witness
@@ -540,6 +535,8 @@ def fund_transaction_final(fn_rpc, send_rvn, recv_rvn, target_addr, vins, vouts,
   return True
 
 
-
+from rvn_rpc import *
+from app_instance import AppInstance
+from wallet_addresses import WalletAddresses
 from swap_transaction import SwapTransaction
 from swap_trade import SwapTrade

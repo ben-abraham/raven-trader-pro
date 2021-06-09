@@ -233,13 +233,6 @@
      <string>RPC Connection</string>
     </property>
    </widget>
-
-   <widget class="QMenu" name="menuSettings">
-    <property name="title">
-     <string>Settings</string>
-    </property>
-    <addaction name="actionDefault_Destination"/>
-   </widget>
    
    <widget class="QMenu" name="menuServer">
     <property name="title">
@@ -250,7 +243,6 @@
 
    <addaction name="menuFile"/>
    <addaction name="menuConnection"/>
-   <addaction name="menuSettings"/>
    <addaction name="menuServer"/>
   </widget>
 

@@ -316,11 +316,9 @@ class SwapTransaction():
     parsed = do_rpc("decoderawtransaction", log_error=False, hexstring=raw_swap)
     if parsed:
       if len(parsed["vin"]) != 1 or len(parsed["vout"]) != 1:
-        print("Invalid Transaction. Has more than one vin/vout")
-        return None
+        return (False, "Invalid Transaction. Has more than one vin/vout")
       if "SINGLE|ANYONECANPAY" not in parsed["vin"][0]["scriptSig"]["asm"]:
-        print("Transaction not signed with SINGLE|ANYONECANPAY")
-        return None
+        return (False, "Transaction not signed with SINGLE|ANYONECANPAY")
 
       swap_vin = parsed["vin"][0]
       swap_vout = parsed["vout"][0]
@@ -331,8 +329,7 @@ class SwapTransaction():
       
       #If nothing comes back this is likely a testnet tx on mainnet of vice-versa
       if not vin_tx:
-        print("Unable to find transaction. Is this for the correct network?")
-        return None
+        return (False, "Unable to find transaction. Is this for the correct network?")
 
       src_vout = vin_tx["vout"][swap_vin["vout"]]
       in_asset = "asset" in src_vout["scriptPubKey"]
@@ -347,7 +344,7 @@ class SwapTransaction():
         order_type = "buy"
 
       if order_type == "unknown":
-        raise Exception("Uknonwn trade type")
+        return (False, "Uknonwn trade type")
 
       in_type = ""
       out_type = ""
@@ -380,7 +377,7 @@ class SwapTransaction():
         out_type = swap_vout["scriptPubKey"]["asset"]["name"]
         out_qty = swap_vout["scriptPubKey"]["asset"]["amount"]
 
-      return SwapTransaction({
+      return (True, SwapTransaction({
         "in_type": in_type,
         "out_type": out_type,
         "in_quantity": in_qty,
@@ -398,11 +395,10 @@ class SwapTransaction():
         "src_vout": src_vout,
         "vout_data": vout_data,
         "from_tx": vin_tx
-      })
+      }))
       
     else:
-      print("Invalid TX")
-      return None
+      return (False, "Invalid TX")
 
 
 from wallet_manager import fund_asset_transaction_raw, fund_transaction_final
