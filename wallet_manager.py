@@ -154,7 +154,7 @@ class WalletManager:
       print("Non-Locking")
 
   def swap_executed(self, swap, txid):
-    self.add_waiting(txid, self.__on_completed_mempool, self.__on_completed_mempool, callback_data=swap)
+    self.add_waiting(txid, self.__on_completed_mempool, self.__on_completed_confirmed, callback_data=swap)
 
   def num_waiting(self):
     return len(self.waiting)
