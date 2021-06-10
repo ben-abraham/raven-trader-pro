@@ -82,6 +82,9 @@ class WalletManager:
     bal_total = [0, 0, 0] #RVN, Unique Assets, Asset Total
     for utxo in self.utxos:
       bal_total[0] += utxo["amount"]
+    #Take the distinct set of names
+    lock_asset_names = [lock["asset"] for lock in self.locks if "asset" in lock]
+    self.my_asset_names = [name for name in set([*self.assets.keys()] + lock_asset_names)]
     for asset in self.my_asset_names:
       bal_total[1] += 1
       asset_total = 0
@@ -232,11 +235,8 @@ class WalletManager:
             self.utxos.append(utxo)
           elif utxo["type"] == "asset":
             asset_name = utxo["asset"]
-            if asset_name not in self.my_asset_names:
-              self.my_asset_names.append(asset_name)
             if asset_name not in self.assets:
-              self.assets[asset_name] = {"balance": 0, "outpoints":[]}
-            self.assets[asset_name]["balance"] += utxo["amount"]
+              self.assets[asset_name] = {"outpoints":[]}
             self.assets[asset_name]["outpoints"].append(utxo)
         else:
           #If we don't get a txout from a lock, it's no longer valid (wallet keeps them around for some reason.....)
@@ -283,7 +283,7 @@ class WalletManager:
     #Actual balance calculation
     self.calculate_balance()
 
-    self.my_asset_names = [*self.assets.keys()]
+    
     #Cheat a bit and embed the asset name in it's metadata. This simplified things later
     for name in self.my_asset_names:
       self.assets[name]["name"] = name
