@@ -63,7 +63,7 @@ class WalletManager:
       self.remove_lock(utxo=utxo)
 
   def add_completed(self, swap_transaction):
-    if swap_transaction.utxo in [old_order.utxo for old_order in self.history]:
+    if swap_transaction in self.history:
       print("Duplicate order add")
       return
     print("Adding to history...")
@@ -95,8 +95,13 @@ class WalletManager:
       if my_lock["type"] == "rvn":
         bal_avail[0] -= my_lock["amount"]
       elif my_lock["type"] == "asset":
-        bal_avail[2] -= my_lock["amount"]
-        self.assets[my_lock["asset"]]["available_balance"] -= my_lock["amount"]
+        asset_name = my_lock["asset"]
+        asset_amt = my_lock["amount"]
+        bal_avail[2] -= asset_amt
+        if asset_name not in self.assets:
+          #This is almost certainly a stale order, just ignore it
+          continue
+        self.assets[asset_name]["available_balance"] -= asset_amt
 
     self.available_balance = tuple(bal_avail)
     self.total_balance = tuple(bal_total)
@@ -218,19 +223,25 @@ class WalletManager:
       wallet_locks = do_rpc("listlockunspent")
       wallet_utxos = []
       for lock in wallet_locks:
+        utxo_str = make_utxo(lock)
         txout = do_rpc("gettxout", txid=lock["txid"], n=int(lock["vout"]), include_mempool=True)
         if txout:
           utxo = vout_to_utxo(txout, lock["txid"], int(lock["vout"]))
-          wallet_utxos.append(make_utxo(lock))
+          wallet_utxos.append(utxo_str)
           if utxo["type"] == "rvn":
             self.utxos.append(utxo)
           elif utxo["type"] == "asset":
-            if utxo["asset"] not in self.assets:
-              self.assets[utxo["asset"]] = {"balance": 0, "outpoints":[]}
-            self.assets[utxo["asset"]]["balance"] += utxo["amount"]
-            self.assets[utxo["asset"]]["outpoints"].append(utxo)
-
-
+            asset_name = utxo["asset"]
+            if asset_name not in self.my_asset_names:
+              self.my_asset_names.append(asset_name)
+            if asset_name not in self.assets:
+              self.assets[asset_name] = {"balance": 0, "outpoints":[]}
+            self.assets[asset_name]["balance"] += utxo["amount"]
+            self.assets[asset_name]["outpoints"].append(utxo)
+        else:
+          #If we don't get a txout from a lock, it's no longer valid (wallet keeps them around for some reason.....)
+          print("Removing Stale Wallet lock: ", utxo_str)
+          self.wallet_lock_single(utxo=utxo_str, lock=False)
 
   def wallet_unlock_all(self):
     do_rpc("lockunspent", unlock=True)
@@ -266,12 +277,16 @@ class WalletManager:
       else:
         print("Order executed on unknown transaction")
 
+    #Remove any locks we can't find with the gettxout command
+    self.clear_stale_locks()
+
+    #Actual balance calculation
+    self.calculate_balance()
+
     self.my_asset_names = [*self.assets.keys()]
     #Cheat a bit and embed the asset name in it's metadata. This simplified things later
     for name in self.my_asset_names:
       self.assets[name]["name"] = name
-
-    self.calculate_balance()
 
 #
 # Lock Management
@@ -296,7 +311,7 @@ class WalletManager:
       (txid, vout) = split_utxo(utxo)
     found = False
     for lock in self.locks:
-      if txid == lock["txid"] and vout == lock["vout"]:
+      if txid == lock["txid"] and int(vout) == int(lock["vout"]):
         self.locks.remove(lock)
         found = True
     if not found:
@@ -342,6 +357,12 @@ class WalletManager:
         if self.swap_utxo_spent(utxo, in_mempool=include_mempool, check_cache=False):
           all_found.append((trade, utxo))
     return all_found
+
+  def clear_stale_locks(self):
+    for lock in self.locks:
+      if not do_rpc("gettxout", txid=lock["txid"], n=lock["vout"], include_mempool=True):
+        print("Removing Stale Lock: ", lock)
+        self.remove_lock(utxo=make_utxo(lock))
           
 #
 # UTXO Searching
