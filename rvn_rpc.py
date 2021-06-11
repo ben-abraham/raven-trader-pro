@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import *
 from PyQt5 import uic
 from ui.ui_prompt import *
 
-import sys, getopt, argparse, json, time, getpass, os, os.path, webbrowser
+import sys, getopt, argparse, json, time, getpass, os, os.path, webbrowser, logging
 from util import *
 
 
@@ -57,25 +57,23 @@ def do_rpc(method, log_error=True, **kwargs):
     url = AppInstance.settings.rpc_url()
     resp = post(url, json=req, timeout=10)
     if resp.status_code != 200 and log_error:
-      print("RPC ==>", end="")
-      print(req)
-      print("RPC <== ERR:", end="")
-      print(resp.text)
+      logging.error("RPC ==> {}".format(req))
+      logging.error("RPC <== {}".format(resp.text))
     if resp.status_code != 200:
       return None
     return json.loads(resp.text)["result"]
   except TimeoutError:
     if log_error:
       #Any RPC timeout errors are totally fatal
-      print("RPC Timeout")
+      logging.error("RPC Timeout")
       AppInstance.on_exit()
       show_error("RPC Timeout", "Timeout contacting RPC")
       exit(-1)
       return None
     else:
       return None
-  except:
-    print("RPC Error")
+  except Exception as ex:
+    logging.error(ex)
     return None
 
 def decode_full(txid):
@@ -87,10 +85,10 @@ def decode_full(txid):
     #TODO: Better way of handling full decode
     tx_url = "https://rvnt.cryptoscope.io/api/getrawtransaction/?txid={}&decode=1" if rpc["testnet"]\
       else "https://rvn.cryptoscope.io/api/getrawtransaction/?txid={}&decode=1"
-    print("Query Full: {}".format(tx_url.format(txid)))
+    logging.info("Query Full: {}".format(tx_url.format(txid)))
     resp = get(tx_url.format(txid))
     if resp.status_code != 200:
-      print("Error fetching raw transaction")
+      logging.info("Error fetching raw transaction")
     result = json.loads(resp.text)
   return result
 
@@ -102,7 +100,7 @@ def requires_unlock():
 def check_unlock(timeout = 10):
   rpc = AppInstance.settings.rpc_details()
   if requires_unlock():
-    print("Unlocking Wallet for {}s".format(timeout))
+    logging.info("Unlocking Wallet for {}s".format(timeout))
     do_rpc("walletpassphrase", passphrase=rpc["unlock"], timeout=timeout)
 
 def dup_transaction(tx, vins=[], vouts={}):
@@ -126,7 +124,7 @@ def search_swap_tx(utxo):
       if ("txid" in tx_vin and "vout" in tx_vin) and \
         (tx_vin["txid"] == txid and tx_vin["vout"] == vout):
         return tx
-  print("Unable to find transaction for completed swap")
+  logging.info("Unable to find transaction for completed swap")
   return None #If we don't find it 10 blocks back, who KNOWS what happened to it
 
 def asset_details(asset_name):

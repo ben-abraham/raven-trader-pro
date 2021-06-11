@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import sys, getopt, argparse, json, time, getpass, os.path
+import sys, getopt, argparse, json, time, getpass, os.path, logging
 from util import *
 from rvn_rpc import *
 
@@ -44,7 +44,7 @@ class WalletAddresses:
     if address in pool["addresses"]:
       return
     pool["addresses"].append(address)
-    print("Adding new address {} to pool [{}]".format(address, pool_name))
+    logging.info("Adding new address {} to pool [{}]".format(address, pool_name))
     
   def get_single_address(self, pool_name="default", avoid=[]):
     return self.get_address_set(1, pool_name, avoid)[0]

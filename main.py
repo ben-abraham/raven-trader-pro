@@ -3,7 +3,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import sys, getopt, argparse, time, getpass, os.path
+import sys, getopt, argparse, time, getpass, os.path, logging
 
 from ui.main_window import MainWindow
 
@@ -26,7 +26,8 @@ if __name__ == "__main__":
     #Finally init/run main window
     window = MainWindow()
     window.show()
-    
+    logging.info("App Startup")
+
     error = None
     try:
       app.exec_()

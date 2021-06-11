@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import sys, getopt, argparse, json, time, getpass, os.path
+import sys, getopt, argparse, json, time, getpass, os.path, logging
 from util import load_json, save_json, init_list
 from rvn_rpc import *
 

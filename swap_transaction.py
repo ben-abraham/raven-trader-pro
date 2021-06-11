@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import sys, getopt, argparse, json, time, getpass, os.path
+import sys, getopt, argparse, json, time, getpass, os.path, logging
 from util import *
 from rvn_rpc import *
 
@@ -97,7 +97,7 @@ class SwapTransaction():
     #Create our destination for assets
     #NOTE: self.destination is where our raven is going, not our destination for assets
     target_addr = AppInstance.wallet.addresses.get_single_address("order_destination")
-    print("Output is being sent to {}".format(target_addr))
+    logging.info("Output is being sent to {}".format(target_addr))
 
 
     #Unlock for signing during fee calc + sending
@@ -107,7 +107,7 @@ class SwapTransaction():
     ##  Complete sell Orders (we are buying an asset with rvn)
     ##
     if self.type == "sell":
-      print("You are purchasing {} x [{}] for {} RVN".format(self.in_quantity, self.asset(), self.total_price()))
+      logging.info("You are purchasing {} x [{}] for {} RVN".format(self.in_quantity, self.asset(), self.total_price()))
 
       #Send output assets to target_addr
       final_vout[target_addr] = make_transfer(self.asset(), self.quantity())
@@ -119,7 +119,7 @@ class SwapTransaction():
     ##
     elif self.type == "buy":
       #Buy order means WE are selling, We need to provide assets
-      print("You are selling {} x [{}] for {} RVN"\
+      logging.info("You are selling {} x [{}] for {} RVN"\
         .format(self.out_quantity, self.asset(), self.total_price()))
       
       #Add needed asset inputs
@@ -133,7 +133,7 @@ class SwapTransaction():
     ##
     elif self.type == "trade":
       #Trade order means WE are providing and reciving assets
-      print("You are trading {}x of YOUR [{}] for {}x of THEIR [{}]"\
+      logging.info("You are trading {}x of YOUR [{}] for {}x of THEIR [{}]"\
         .format(self.out_quantity, self.out_type, self.in_quantity, self.in_type))
       
       #Send output assets to target_addr
@@ -164,22 +164,22 @@ class SwapTransaction():
     mem_accept = do_rpc("testmempoolaccept", rawtxs=[signed_hex])
 
     if(mem_accept and mem_accept[0]["allowed"]):
-      print("Accepted to mempool!")
+      logging.info("Accepted to mempool!")
       tx_allowed = True
       tx_final = signed_hex
     elif(mem_accept and mem_accept[0]["reject-reason"]=="66: min relay fee not met"):
-      print("Min fee not met")
+      logging.info("Min fee not met")
       #raise Exception("Fee Error")
       tx_allowed = True
       tx_final = signed_hex
     else:
-      print(mem_accept)
-      print("Final Raw")
-      print(final_raw)
+      logging.info(mem_accept)
+      logging.info("Final Raw")
+      logging.info(final_raw)
       if final_raw:
-        print("Decoded")
-        print(do_rpc("decoderawtransaction", hexstring=final_raw))
-      print("!!Error!!")
+        logging.info("Decoded")
+        logging.info(do_rpc("decoderawtransaction", hexstring=final_raw))
+      logging.info("!!Error!!")
       raise Exception("Error Building TX")
 
     #remove this so it doesn't get encoded to json later
@@ -194,7 +194,7 @@ class SwapTransaction():
     for swap in swaps:
       total_inputs[swap.in_type] = (total_inputs[swap.in_type] if swap.in_type in total_inputs else 0) + swap.in_quantity
       total_outputs[swap.out_type] = (total_outputs[swap.out_type] if swap.out_type in total_outputs else 0) + swap.out_quantity
-    print("Sub-Total: In {} - Out {}".format(total_inputs, total_outputs))
+    logging.info("Sub-Total: In {} - Out {}".format(total_inputs, total_outputs))
     #These assets need to be supplied by us (outputs) but were also supplied (inputs)
     for dup_asset in [asset for asset in total_outputs.keys() if asset in total_inputs]:
       if total_inputs[dup_asset] >= total_outputs[dup_asset]:
@@ -202,14 +202,14 @@ class SwapTransaction():
         total_inputs[dup_asset] -= total_outputs[dup_asset]
         canceled_assets[dup_asset] = total_outputs[dup_asset]
         del total_outputs[dup_asset]
-        print("Net Credit {}x [{}]".format(total_inputs[dup_asset], dup_asset))
+        logging.info("Net Credit {}x [{}]".format(total_inputs[dup_asset], dup_asset))
       elif total_inputs[dup_asset] < total_outputs[dup_asset]:
         #More was requested than supplied in inputs, net debit
         total_outputs[dup_asset] -= total_inputs[dup_asset]
         canceled_assets[dup_asset] = total_inputs[dup_asset]
         del total_inputs[dup_asset]
-        print("Net Debit {}x [{}]".format(total_outputs[dup_asset], dup_asset))
-    print("Total: In {} - Out {} (Cancelled: {})".format(total_inputs, total_outputs, canceled_assets))
+        logging.info("Net Debit {}x [{}]".format(total_outputs[dup_asset], dup_asset))
+    logging.info("Total: In {} - Out {} (Cancelled: {})".format(total_inputs, total_outputs, canceled_assets))
 
     mega_tx_vins = []
     mega_tx_vouts = {}
@@ -217,12 +217,12 @@ class SwapTransaction():
     for swap in swaps:
       swap_decoded = do_rpc("decoderawtransaction", log_error=False, hexstring=swap.raw)
       if "SINGLE|ANYONECANPAY" not in swap_decoded["vin"][0]["scriptSig"]["asm"]:
-        print("Transaction not signed with SINGLE|ANYONECANPAY")
+        logging.info("Transaction not signed with SINGLE|ANYONECANPAY")
         return None
       dup_transaction(swap_decoded, mega_tx_vins, mega_tx_vouts)
 
-    print("Un-Funded Inputs: ", mega_tx_vins)
-    print("Un-Funded Outputs: ", mega_tx_vouts)
+    logging.info("Un-Funded Inputs: {}".format(mega_tx_vins))
+    logging.info("Un-Funded Outputs: {}".format(mega_tx_vouts))
 
     send_rvn = 0
     recv_rvn = 0
@@ -242,8 +242,8 @@ class SwapTransaction():
         mega_tx_vouts[asset_addr] = make_transfer(recieve_asset, total_inputs[recieve_asset])
 
 
-    print("Asset-Funded Inputs: ", mega_tx_vins)
-    print("Asset-Funded Outputs: ", mega_tx_vouts)
+    logging.info("Asset-Funded Inputs: {}".format(mega_tx_vins))
+    logging.info("Asset-Funded Outputs: {}".format(mega_tx_vouts))
 
     original_hexs = [swap.raw for swap in swaps]
 
@@ -259,9 +259,9 @@ class SwapTransaction():
     #Merge the signed tx from the original order
     combined_raw = final_raw
     for hex in original_hexs:
-      print(hex)
+      logging.info(hex)
       combined_raw = do_rpc("combinerawtransaction", txs=[combined_raw, hex])
-      print(combined_raw)
+      logging.info(combined_raw)
     #Sign our inputs/outputs
     signed_res = do_rpc("signrawtransaction", hexstring=combined_raw)
     signed_hex = signed_res["hex"]
@@ -269,24 +269,24 @@ class SwapTransaction():
     mem_accept = do_rpc("testmempoolaccept", rawtxs=[signed_hex])
 
     if(mem_accept and mem_accept[0]["allowed"]):
-      print("Accepted to mempool!")
+      logging.info("Accepted to mempool!")
       tx_allowed = True
       tx_final = signed_hex
     elif(mem_accept and mem_accept[0]["reject-reason"]=="66: min relay fee not met"):
-      print("Min fee not met")
+      logging.info("Min fee not met")
       #raise Exception("Fee Error")
       tx_allowed = True
       tx_final = signed_hex
     else:
-      print(mem_accept)
-      print("Final Raw")
-      print(combined_raw)
-      print("Signed Raw")
-      print(signed_res)
+      logging.info(mem_accept)
+      logging.info("Final Raw")
+      logging.info(combined_raw)
+      logging.info("Signed Raw")
+      logging.info(signed_res)
       #if combined_raw:
-      #  print("Decoded")
-      #  print(do_rpc("decoderawtransaction", hexstring=combined_raw))
-      print("!!Error!!")
+      #  logging.info("Decoded")
+      #  logging.info(do_rpc("decoderawtransaction", hexstring=combined_raw))
+      logging.info("!!Error!!")
       raise Exception("Error Building TX")
     
 

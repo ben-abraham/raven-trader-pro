@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import sys, getopt, argparse, json, time, getpass, os.path
+import sys, getopt, argparse, json, time, getpass, os.path, logging
 from util import *
 from rvn_rpc import *
 
@@ -82,7 +82,7 @@ class MainWindow(QMainWindow):
       self.created_order(trade_swap)
 
   def created_order(self, trade):
-    print("New {}: {}".format(trade.type, json.dumps(trade.__dict__)))
+    logging.info("New {}: {}".format(trade.type, json.dumps(trade.__dict__)))
     self.wallet.add_swap(trade)
     self.wallet.save_data()
     self.update_lists()
@@ -101,7 +101,7 @@ class MainWindow(QMainWindow):
           if delete_resp not in [1, 0]:
             return #anything outside of a 1/0 represents a cancel
           grouped_invalidate = (delete_resp == 1)
-        print("Hard-Deleting Trade")
+        logging.info("Hard-Deleting Trade")
         signed_tx = trade.construct_invalidate_tx(grouped_invalidate)
         if signed_tx:
           txid = self.preview_complete(signed_tx, "Invalidate Old Trades")
@@ -110,7 +110,7 @@ class MainWindow(QMainWindow):
             trade.sent_invalidate_tx(txid)
             self.wallet.remove_swap(trade)
       elif result == 0:
-        print("Soft-Deleting Trade")
+        logging.info("Soft-Deleting Trade")
         self.wallet.remove_swap(trade)
       elif result == QMessageBox.Cancel:
         return
@@ -139,7 +139,7 @@ class MainWindow(QMainWindow):
       return
     (num_new_trades, confirmed) = show_number_prompt("Refill trade pool?", "How many additional trades would you like to add to the trade pool?")
     if confirmed and num_new_trades > 0:
-      print("Refill: ", num_new_trades)
+      logging.info("Refill {} trades".format(num_new_trades))
       trade = self.menu_context["data"]
       trade.order_count += num_new_trades
       self.setup_trades(trade, True)
@@ -211,7 +211,7 @@ class MainWindow(QMainWindow):
         if success:
           posted += 1
         else:
-          print("Error posting: ", response)
+          logging.error("Error posting: {}".format(response))
 
       if posted == len(trade.transactions):
         show_dialog("Success", "All trades posted succesfull!")
@@ -298,7 +298,7 @@ class MainWindow(QMainWindow):
       partial_swap = order_dialog.build_order()
       finished_swap = partial_swap.complete_order()
       if finished_swap:
-        print("Swap: ", json.dumps(partial_swap.__dict__))
+        logging.info("Swap: ", json.dumps(partial_swap.__dict__))
         sent_txid = self.preview_complete(finished_swap, "Confirm Transaction [2/2]")
         if sent_txid:
           self.wallet.swap_executed(partial_swap, sent_txid)
@@ -312,13 +312,13 @@ class MainWindow(QMainWindow):
       #decode_swap returns (succes, result)
       parsed_orders = [SwapTransaction.decode_swap(order_hex)[1] for order_hex in orders_hex]
       composite_trade = SwapTransaction.composite_transactions(parsed_orders)
-      print(parsed_orders)
-      print(composite_trade)
+      logging.info(parsed_orders)
+      logging.info(composite_trade)
   
   def preview_complete(self, raw_tx, message, swap=None):
     preview_dialog = PreviewTransactionDialog(swap, raw_tx, preview_title=message, parent=self)
     if preview_dialog.exec_():
-      print("Transaction Approved. Sending!")
+      logging.info("Transaction Approved. Sending!")
       submitted_txid = do_rpc("sendrawtransaction", hexstring=raw_tx)
       return submitted_txid
     return None
@@ -349,23 +349,23 @@ class MainWindow(QMainWindow):
 #
 
   def swap_mempool(self, transaction, order):
-    print("Own Swap In Mempool")
+    logging.info("Own Swap In Mempool")
     self.actionRefresh.trigger()
 
   def swap_confirmed(self, transaction, order):
-    print("Own Swap Confirmed")
+    logging.info("Own Swap Confirmed")
     self.actionRefresh.trigger()
 
   def completed_trade_mempool(self, transaction, order):
-    print("Trade Mempool Confirmed")
+    logging.info("Trade Mempool Confirmed")
     self.actionRefresh.trigger()
 
   def completed_trade_network(self, transaction, order):
-    print("Trade Final Confirm")
+    logging.info("Trade Final Confirm")
     self.actionRefresh.trigger()
 
   def setup_mempool_confirmed(self, transaction, trade):
-    print("Trade Setup Mempool Confirmed")
+    logging.info("Trade Setup Mempool Confirmed")
     txid = transaction["txid"]
     #Naive approach, just lock the UTXO's immediately once we see it confirmed in mempool.
     for i in range(0, trade.missing_trades()):
@@ -374,7 +374,7 @@ class MainWindow(QMainWindow):
     self.actionRefresh.trigger()
 
   def setup_network_confirmed(self, transaction, trade):
-    print("Trade Setup Final Confirm")
+    logging.info("Trade Setup Final Confirm")
     self.actionRefresh.trigger()
 
 #
@@ -388,14 +388,14 @@ class MainWindow(QMainWindow):
     self.updateTimer.stop()
     self.settings.set_rpc_index(index)
     if test_rpc_status():
-      print("Switching RPC")
+      logging.info("Switching RPC")
       self.lstMyAssets.clear()#Fully clear lists to fix bugs
       self.lstAllOrders.clear()
       self.lstPastOrders.clear()
       AppInstance.on_load()
       self.actionRefresh.trigger()
     else:
-      print("Error testing RPC")
+      logging.info("Error testing RPC")
       self.settings.set_rpc_index(old_index)
     self.update_dynamic_menus()
     self.updateTimer.start(self.settings.read("update_interval"))

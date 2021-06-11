@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import sys, getopt, argparse, json, time, getpass, os.path, re
+import sys, getopt, argparse, json, time, getpass, os.path, re, logging
 from util import *
 from rvn_rpc import *
 from ui.ui_prompt import *
@@ -24,7 +24,7 @@ class OrderDetailsDialog(QDialog):
     self.dialog_mode = dialog_mode
     self.current_number = 0
     self.last_text = ""
-    print(self.swap)
+    logging.info(self.swap)
     if self.dialog_mode == "single":
       self.setWindowTitle("Order Details")
       self.update_for_swap(self.swap) #SwapTransaction

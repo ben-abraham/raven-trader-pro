@@ -1,3 +1,9 @@
+import os.path, logging
+from logging.handlers import TimedRotatingFileHandler
+from util import ensure_directory
+
+LOG_STORAGE_PATH = "~/.raventrader/raventrader.log"
+
 class AppInstance:
   settings = None
   storage = None
@@ -5,7 +11,26 @@ class AppInstance:
   server = None
 
   @staticmethod
+  def setup_logging(directory):
+    path = os.path.expanduser(LOG_STORAGE_PATH)
+    ensure_directory(os.path.dirname(path))
+    logger = logging.getLogger()
+    handler = TimedRotatingFileHandler(path, when='D', interval=1, backupCount=7)
+    fmt = '%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s'
+    formatter = logging.Formatter(fmt=fmt, datefmt='%m/%d/%Y %H:%M:%S')
+    handler.setFormatter(formatter)
+    handler.setLevel(logging.INFO)
+    # tee output to console as well
+    console = logging.StreamHandler()
+    console.setFormatter(formatter)
+    console.setLevel(logging.INFO)
+    logger.addHandler(console)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+
+  @staticmethod
   def on_init():
+    AppInstance.setup_logging(AppInstance.settings.get_path())
     AppInstance.storage = AppStorage()
     AppInstance.wallet = WalletManager()
     AppInstance.server = ServerConnection()
@@ -27,7 +52,7 @@ class AppInstance:
   @staticmethod
   def on_exit(error=None):
     if error:
-      print("App Error: ", error)
+      logging.error(error)
     AppInstance.on_close()
 
 

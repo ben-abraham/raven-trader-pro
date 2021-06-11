@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import os, sys, getopt, argparse, json, time, getpass, os.path, datetime, shutil, base64, webbrowser, subprocess
+import os, sys, getopt, argparse, json, time, getpass, os.path, datetime, shutil, base64, webbrowser, subprocess, logging
 
 from ui.ui_prompt import *
 
@@ -44,7 +44,7 @@ def make_prefill(asset, quantity=1, unit_price=1):
 #
 
 def open_file(filename):
-  print("Opening system file for editing: ", filename)
+  logging.info("Opening system file for editing: {}".format(filename))
   if sys.platform == "win32":
     os.startfile(filename)
   else:
@@ -64,7 +64,7 @@ def make_transfer(name, quantity):
 def backup_remove_file(file_path):
   (root, ext) = os.path.splitext(file_path)
   new_name = "old_{}_{}.{}".format(file_path, datetime.datetime.now().strftime('%Y%m%d%H%M%S'), ext) 
-  print("Discarding/moving file [{}] into backup location [{}]".format(file_path, new_name))
+  logging.info("Discarding/moving file [{}] into backup location [{}]".format(file_path, new_name))
 
 def ensure_directory(dir):
   if not os.path.exists(dir):
@@ -72,13 +72,13 @@ def ensure_directory(dir):
 
 def load_json(path, hook, title, default=[]):
   if not os.path.isfile(path):
-    #print("No {} records.".format(title))
+    #logging.info("No {} records.".format(title))
     return default
   fSwap = open(path, mode="r")
   swapJson = fSwap.read()
   fSwap.close()
   data = json.loads(swapJson, object_hook=hook)
-  #print("Loaded {} {} records from disk".format(len(data), title))
+  #logging.info("Loaded {} {} records from disk".format(len(data), title))
   return data
 
 def save_json(path, data):

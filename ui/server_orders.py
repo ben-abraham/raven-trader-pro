@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import sys, getopt, argparse, json, time, getpass, os.path
+import sys, getopt, argparse, json, time, getpass, os.path, logging
 from util import *
 from rvn_rpc import *
 
@@ -45,7 +45,7 @@ class ServerOrdersDialog(QDialog):
     self.refresh_listings()
 
   def refresh_listings(self):
-    print("Refreshing Server Orders")
+    logging.info("Refreshing Server Orders")
     swap_type = None
     #Have to reverse perspective when looking at external orders
     if self.cmbOrderType.currentText() == "Buy Orders Only":

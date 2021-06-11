@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import sys, getopt, argparse, json, time, getpass, os.path
+import sys, getopt, argparse, json, time, getpass, os.path, logging
 
 SETTINGS_STORAGE_PATH = "~/.raventrader/settings.json"
 
@@ -18,13 +18,13 @@ def ensure_directory(dir):
 
 def load_json(path, hook, title, default=[]):
   if not os.path.isfile(path):
-    #print("No {} records.".format(title))
+    #logging.info("No {} records.".format(title))
     return default
   fSwap = open(path, mode="r")
   swapJson = fSwap.read()
   fSwap.close()
   data = json.loads(swapJson, object_hook=hook)
-  #print("Loaded {} {} records from disk".format(len(data), title))
+  #logging.info("Loaded {} {} records from disk".format(len(data), title))
   return data
 
 def save_json(path, data):

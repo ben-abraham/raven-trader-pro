@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import sys, getopt, argparse, json, time, getpass, os.path
+import sys, getopt, argparse, json, time, getpass, os.path, logging
 from util import *
 
 class WalletManager:
@@ -64,9 +64,9 @@ class WalletManager:
 
   def add_completed(self, swap_transaction):
     if swap_transaction in self.history:
-      print("Duplicate order add")
+      logging.info("Duplicate order add")
       return
-    print("Adding to history...")
+    logging.info("Adding to history...")
     self.history.append(swap_transaction)
     if swap_transaction.own:
       self.remove_lock(utxo=swap_transaction.utxo)
@@ -134,7 +134,6 @@ class WalletManager:
   def __on_completed_mempool(self, transaction, swap):
     swap.txid = transaction["txid"]
     swap.state = "pending"
-    print(swap)
     self.add_completed(swap)
     call_if_set(self.on_completed_mempool, transaction, swap)
 
@@ -148,18 +147,18 @@ class WalletManager:
 #
 
   def wallet_prepare_transaction(self):
-    print("Preparing for a transaction")
+    logging.info("Preparing for a transaction")
     if AppInstance.settings.lock_mode():
-      print("Locking")
+      logging.info("Locking")
     else:
-      print("Non-Locking")
+      logging.info("Non-Locking")
 
   def wallet_completed_transaction(self):
-    print("Completed a transaction")
+    logging.info("Completed a transaction")
     if AppInstance.settings.lock_mode():
-      print("Locking")
+      logging.info("Locking")
     else:
-      print("Non-Locking")
+      logging.info("Non-Locking")
 
   def swap_executed(self, swap, txid):
     self.add_waiting(txid, self.__on_completed_mempool, self.__on_completed_confirmed, callback_data=swap)
@@ -168,7 +167,7 @@ class WalletManager:
     return len(self.waiting)
 
   def add_waiting(self, txid, fnOnSeen=None, fnOnConfirm=None, callback_data=None):
-    print("Waiting on txid: {}".format(txid))
+    prlogging.infoint("Waiting on txid: {}".format(txid))
     self.waiting.append((txid, fnOnSeen, fnOnConfirm, callback_data))
 
   def clear_waiting(self):
@@ -184,16 +183,16 @@ class WalletManager:
       tx_confirmed = "confirmations" in tx_data and tx_data["confirmations"] >= 1
       
       if not tx_confirmed and txid not in self.trigger_cache:
-        print("Waiting txid {} confirmed in mempool.".format(txid))
+        logging.info("Waiting txid {} confirmed in mempool.".format(txid))
         self.trigger_cache.append(txid)
         call_if_set(seen, tx_data, callback_data)
       elif tx_confirmed and txid in self.trigger_cache:
-        print("Waiting txid {} fully confirmed.".format(txid))
+        logging.info("Waiting txid {} fully confirmed.".format(txid))
         self.trigger_cache.remove(txid)
         self.waiting.remove(waiting)
         call_if_set(confirm, tx_data, callback_data)
       elif tx_confirmed and txid not in self.trigger_cache:
-        print("Missed memcache for txid {}, direct to confirm.".format(txid))
+        logging.info("Missed memcache for txid {}, direct to confirm.".format(txid))
         self.waiting.remove(waiting)
         call_if_set(seen, tx_data, callback_data)
         call_if_set(confirm, tx_data, callback_data)
@@ -206,7 +205,7 @@ class WalletManager:
     for swap in self.swaps:
       for utxo in swap.order_utxos:
         locked_utxos.append(utxo)
-    print("Locking {} UTXO's from orders".format(len(locked_utxos)))
+    logging.info("Locking {} UTXO's from orders".format(len(locked_utxos)))
     self.wallet_lock_utxos(locked_utxos)
 
   def wallet_lock_utxos(self, utxos=[], lock = True):
@@ -240,7 +239,7 @@ class WalletManager:
             self.assets[asset_name]["outpoints"].append(utxo)
         else:
           #If we don't get a txout from a lock, it's no longer valid (wallet keeps them around for some reason.....)
-          print("Removing Stale Wallet lock: ", utxo_str)
+          logging.info("Removing Stale Wallet lock: {}".format(utxo_str))
           self.wallet_lock_single(utxo=utxo_str, lock=False)
 
   def wallet_unlock_all(self):
@@ -272,10 +271,10 @@ class WalletManager:
       transaction = search_swap_tx(utxo)
       if transaction:
         txid = transaction["txid"]
-        print("Order Completed: TXID {}".format(txid))
+        logging.info("Order Completed: TXID {}".format(txid))
         self.add_waiting(txid, self.__on_swap_mempool, self.__on_swap_confirmed, callback_data=finished_order)
       else:
-        print("Order executed on unknown transaction")
+        logging.info("Order executed on unknown transaction")
 
     #Remove any locks we can't find with the gettxout command
     self.clear_stale_locks()
@@ -298,7 +297,7 @@ class WalletManager:
     for lock in self.locks:
       if txid == lock["txid"] and vout == lock["vout"]:
         return #Already added
-    print("Locking UTXO {}-{}".format(txid, vout))
+    logging.info("Locking UTXO {}-{}".format(txid, vout))
     txout = do_rpc("gettxout", txid=txid, n=vout, include_mempool=True) #True means this will be None when spent in mempool
     if txout:
       utxo = vout_to_utxo(txout, txid, vout)
@@ -316,7 +315,7 @@ class WalletManager:
         found = True
     if not found:
       return
-    print("Unlocking UTXO {}-{}".format(txid, vout))
+    logging.info("Unlocking UTXO {}-{}".format(txid, vout))
     #in wallet-lock mode we need to return these to the wallet
     if AppInstance.settings.lock_mode():
       self.wallet_lock_single(txid, vout, lock=False)
@@ -348,7 +347,7 @@ class WalletManager:
           else:
             self.add_waiting(swap_tx["txid"], self.__on_completed_mempool, self.__on_completed_confirmed, pending_order)
         else:
-          print("Failed to find transaction for presumably completed UTXO {}".format(pending_order.utxo))
+          logging.info("Failed to find transaction for presumably completed UTXO {}".format(pending_order.utxo))
 
   def search_completed(self, include_mempool=True):
     all_found = []
@@ -361,7 +360,7 @@ class WalletManager:
   def clear_stale_locks(self):
     for lock in self.locks:
       if not do_rpc("gettxout", txid=lock["txid"], n=lock["vout"], include_mempool=True):
-        print("Removing Stale Lock: ", lock)
+        logging.info("Removing Stale Lock: {}".format(lock))
         self.remove_lock(utxo=make_utxo(lock))
           
 #
@@ -369,7 +368,7 @@ class WalletManager:
 #
 
   def find_utxo(self, type, quantity, name=None, exact=True, include_locked=False, skip_rounded=True, sort_utxo=False):
-    print("Find {} UTXO: {} Exact: {} Include Locks: {}".format(type, quantity, exact, include_locked))
+    logging.info("Find {} UTXO: {} Exact: {} Include Locks: {}".format(type, quantity, exact, include_locked))
     available = self.get_utxos(type, name, include_locked=include_locked)
     for utxo in available:
       if(float(utxo["amount"]) == float(quantity) and exact) or (float(utxo["amount"]) >= quantity and not exact):
@@ -377,7 +376,7 @@ class WalletManager:
     return None
 
   def find_utxo_multiple_exact(self, type, quantity, name=None, include_locked=False):
-    print("Find UTXO Multiple Exact: {} {} {} Include Locks: {}".format(quantity, type, name, include_locked))
+    logging.info("Find UTXO Multiple Exact: {} {} {} Include Locks: {}".format(quantity, type, name, include_locked))
     return [utxo for utxo in self.get_utxos(type, name=name, include_locked=include_locked) if utxo["amount"] == quantity]
 
   def get_utxos(self, type, name=None, include_locked=False):
@@ -435,10 +434,10 @@ class WalletManager:
         found_set.append(removed)
 
     if total >= quantity:
-      print("{} UTXOs: {} Requested: {:.8g} Total: {:.8g} Change: {:.8g}".format(type, len(found_set), quantity, total, total - quantity))
+      logging.info("{} UTXOs: {} Requested: {:.8g} Total: {:.8g} Change: {:.8g}".format(type, len(found_set), quantity, total, total - quantity))
       return (total, found_set)
     else:
-      print("Not enough {} funds found. Requested: {:.8g} Total: {:.8g} Missing: {:.8g}".format(type, quantity, total, total-quantity))
+      logging.info("Not enough {} funds found. Requested: {:.8g} Total: {:.8g} Missing: {:.8g}".format(type, quantity, total, total-quantity))
       return (None, None)
 
   #check if a swap's utxo has been spent
@@ -512,7 +511,7 @@ def fund_asset_transaction_raw(fn_rpc, asset_name, quantity, vins, vouts, asset_
   #Add asset change if needed
   if(asset_utxo_total > quantity):
     #TODO: Send change to address the asset UTXO was originally sent to
-    print("Asset change being sent to {}".format(asset_change_addr))
+    logging.info("Asset change being sent to {}".format(asset_change_addr))
     vouts[asset_change_addr] = make_transfer(asset_name, asset_utxo_total - quantity)
 
 def fund_transaction_final(fn_rpc, send_rvn, recv_rvn, target_addr, vins, vouts, original_txs):
@@ -532,7 +531,7 @@ def fund_transaction_final(fn_rpc, send_rvn, recv_rvn, target_addr, vins, vouts,
   fee_guess = calculated_fee_from_size(calculate_size(vins, vouts)) * 4
   send_rvn += fee_guess #add it to the amount required in the UTXO set
 
-  print("Funding Raw Transaction. Send: {:.8g} RVN. Get: {:.8g} RVN".format(send_rvn, recv_rvn))
+  logging.info("Funding Raw Transaction. Send: {:.8g} RVN. Get: {:.8g} RVN".format(send_rvn, recv_rvn))
   
   if send_rvn > 0:
     #Determine a valid UTXO set that completes this transaction
@@ -552,7 +551,7 @@ def fund_transaction_final(fn_rpc, send_rvn, recv_rvn, target_addr, vins, vouts,
   out_rvn = (send_rvn + recv_rvn) - cost - fee_rvn
   vouts[target_addr] = round(out_rvn, 8)
 
-  print("Funding result: Send: {:.8g} Recv: {:.8g} Fee: {:.8g} Change: {:.8g}".format(send_rvn, recv_rvn, fee_rvn, out_rvn))
+  logging.info("Funding result: Send: {:.8g} Recv: {:.8g} Fee: {:.8g} Change: {:.8g}".format(send_rvn, recv_rvn, fee_rvn, out_rvn))
 
   return True
 

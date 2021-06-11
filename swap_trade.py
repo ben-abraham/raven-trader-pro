@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import sys, getopt, argparse, json, time, getpass, os.path
+import sys, getopt, argparse, json, time, getpass, os.path, logging
 from util import *
 from rvn_rpc import *
 
@@ -125,7 +125,7 @@ class SwapTrade():
     if max_add:
       num_create = min(max_add, num_create)
     quantity_required = self.in_quantity * num_create
-    print("Setting up trade for {} missing. Max add: {}. Required Qty: {}".format(num_create, max_add, quantity_required))
+    logging.info("Setting up trade for {} missing. Max add: {}. Required Qty: {}".format(num_create, max_add, quantity_required))
 
     #Get a distinct list of addresses to use for deposits
     addr_list = AppInstance.wallet.addresses.get_address_set(num_create + 2)

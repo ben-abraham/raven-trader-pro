@@ -24,11 +24,11 @@ files = subprocess.check_output(cmd, shell=True)
 with open("app.fil", "wb") as f:
     f.write(files)
 
-print("Found {} files to translate".format(len(files.splitlines())))
+logging.info("Found {} files to translate".format(len(files.splitlines())))
 
 # Generate fresh translation template
 if not os.path.exists('locale'):
     os.mkdir('locale')
 cmd = 'xgettext -s --from-code UTF-8 --language Python --no-wrap -f app.fil --output=locale/messages.pot'
-print('Generate template')
+logging.info('Generate template')
 os.system(cmd)

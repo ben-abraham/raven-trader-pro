@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import sys, getopt, argparse, json, time, getpass, os.path
+import sys, getopt, argparse, json, time, getpass, os.path, logging
 from util import *
 from rvn_rpc import *
 
@@ -33,16 +33,16 @@ class ServerConnection:
     try:
       resp = get(url, params=req) if method == "GET" else post(url, json=req)
       if resp.status_code != 200:
-        print("RTServer ==> {} {} {}".format(method, url, req))
-        print("RTServer <== {}".format(resp.text))
+        logging.error("RTServer ==> {} {} {}".format(method, url, req))
+        logging.error("RTServer <== {}".format(resp.text))
       j_resp = json.loads(resp.text)
       if "error" in j_resp and j_resp["error"]:
-        print("RT Error: ", resp.text)
+        logging.error(resp.text)
         return None
       else:
         return j_resp
     except (Exception) as e:
-      print("RT Server Error ", e)
+      logging.error(e)
       return None
 
   def do_get(self, url, **kwargs):
