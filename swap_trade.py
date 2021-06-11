@@ -175,6 +175,50 @@ class SwapTrade():
     
     return (True, sign_tx["hex"])
 
+  def construct_invalidate_tx(self, combine=False):
+    final_vin = []
+    final_vout = {}
+
+    #each element is {utxo}
+    input_utxos = [AppInstance.wallet.search_utxo(utxo) for utxo in self.order_utxos]
+
+    #Populate vins with all active UTXO's
+    final_vin = [utxo_copy(utxo) for utxo in input_utxos]
+
+    output_quantities = [utxo["amount"] for utxo in input_utxos]
+    if combine:
+      output_quantities = [sum(output_quantities)]
+
+    output_addresses = AppInstance.wallet.addresses.get_address_set(len(output_quantities))
+
+    #Judge all UTXO's based on the first in the list.
+    #TODO: Validate all are identical
+    trade_type = input_utxos[0]["type"]
+    trade_name = "rvn" if trade_type == "rvn" else (input_utxos[0]["asset"])
+
+    for index, address in enumerate(output_addresses):
+      quantity = output_quantities[index]
+      if trade_type == "rvn":
+        final_vout[address] = quantity
+      elif trade_type == "asset":
+        final_vout[address] = make_transfer(trade_name, quantity)
+
+    check_unlock()
+
+    new_tx = do_rpc("createrawtransaction", inputs=final_vin, outputs=final_vout)
+    funded_tx = do_rpc("fundrawtransaction", hexstring=new_tx, options={"changePosition": len(final_vout.keys())})
+    signed_raw = do_rpc("signrawtransaction", hexstring=funded_tx["hex"])["hex"]
+
+    return signed_raw
+
+  def sent_invalidate_tx(self, txid):
+    #Don't really need to do much except clear UTXOs and tx list
+    for utxo in self.order_utxos:
+      AppInstance.wallet.remove_lock(utxo=utxo)
+    self.order_utxos = []
+    self.transactions = []
+    self.order_count = 0
+
   def missing_trades(self):
     return self.order_count - len(self.order_utxos)
 

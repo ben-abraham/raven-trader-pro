@@ -451,15 +451,16 @@ class WalletManager:
       txout = do_rpc("gettxout", txid=txid, n=vout, include_mempool=in_mempool)
       return txout == None
 
+  #return ({type, utxo}, amount)
   def search_utxo(self, utxo):
     (txid, vout) = split_utxo(utxo)
     for utxo in self.utxos:
       if utxo["txid"] == txid and utxo["vout"] == vout:
-        return {"type": "rvn", "utxo": utxo}
+        return utxo
     for asset_name in self.my_asset_names:
       for a_utxo in self.assets[asset_name]["outpoints"]:
         if a_utxo["txid"] == txid and a_utxo["vout"] == vout:
-          return {"type": "asset", "utxo": a_utxo, "name": asset_name}
+          return a_utxo
     return None
 
   def is_locked(self, utxo):
@@ -554,7 +555,6 @@ def fund_transaction_final(fn_rpc, send_rvn, recv_rvn, target_addr, vins, vouts,
   print("Funding result: Send: {:.8g} Recv: {:.8g} Fee: {:.8g} Change: {:.8g}".format(send_rvn, recv_rvn, fee_rvn, out_rvn))
 
   return True
-
 
 from rvn_rpc import *
 from app_instance import AppInstance

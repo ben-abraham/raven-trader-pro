@@ -91,10 +91,31 @@ class MainWindow(QMainWindow):
   def action_remove_trade(self, _, confirm=True):
     if self.menu_context["type"] != "trade":
       return
-    if confirm:
-      if show_prompt("Remove Trade?", "Are you sure you want to remove this trade?") == QMessageBox.No:
+    trade = self.menu_context["data"]
+    if confirm and len(trade.order_utxos) > 0:
+      result = show_hard_delete_prompt(self)
+      if result == 1: # I don't know why it returns this and not YesRole :shrug:
+        grouped_invalidate = False
+        if len(trade.order_utxos) > 1: #If we have only one item, no need to ask
+          delete_resp = show_hard_delete_type_prompt(self)
+          if delete_resp not in [1, 0]:
+            return #anything outside of a 1/0 represents a cancel
+          grouped_invalidate = (delete_resp == 1)
+        print("Hard-Deleting Trade")
+        signed_tx = trade.construct_invalidate_tx(grouped_invalidate)
+        if signed_tx:
+          txid = self.preview_complete(signed_tx, "Invalidate Old Trades")
+          if txid:
+            self.wallet.add_waiting(txid)
+            trade.sent_invalidate_tx(txid)
+            self.wallet.remove_swap(trade)
+      elif result == 0:
+        print("Soft-Deleting Trade")
+        self.wallet.remove_swap(trade)
+      elif result == QMessageBox.Cancel:
         return
-    self.wallet.remove_swap(self.menu_context["data"])
+    else:
+      self.wallet.remove_swap(trade) #simple delete
     self.actionRefresh.trigger()
 
   def action_view_trade(self, force=True):
