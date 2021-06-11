@@ -13,6 +13,13 @@ from util import *
 
 
 def test_rpc_status(first_launch=False):
+  rpc = AppInstance.settings.rpc_details()
+  if requires_unlock() and not rpc["unlock"]:
+    show_error("Unlock phrase required.", "An unlock phrase has been set on this wallet, \r\n"+
+    "but has not been configured in the settings for Raven-Trader-Pro.",
+    "Settings file is located at: '{}'\r\n".format(AppInstance.settings.get_path()))
+    return False
+  
   #Then do a basic test of RPC, also can check it is synced here
   chain_info = do_rpc("getblockchaininfo", log_error=False)
   #If the headers and blocks are not within 5 of each other,
@@ -87,11 +94,14 @@ def decode_full(txid):
     result = json.loads(resp.text)
   return result
 
+def requires_unlock():
+  #returns None if no password set
+  phrase_test = do_rpc("help", command="walletpassphrase")
+  return phrase_test.startswith("walletpassphrase")
+
 def check_unlock(timeout = 10):
   rpc = AppInstance.settings.rpc_details()
-  phrase_test = do_rpc("help", command="walletpassphrase")
-  #returns None if no password set
-  if(phrase_test.startswith("walletpassphrase")):
+  if requires_unlock():
     print("Unlocking Wallet for {}s".format(timeout))
     do_rpc("walletpassphrase", passphrase=rpc["unlock"], timeout=timeout)
 
