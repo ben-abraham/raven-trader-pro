@@ -167,7 +167,7 @@ class WalletManager:
     return len(self.waiting)
 
   def add_waiting(self, txid, fnOnSeen=None, fnOnConfirm=None, callback_data=None):
-    prlogging.infoint("Waiting on txid: {}".format(txid))
+    logging.info("Waiting on txid: {}".format(txid))
     self.waiting.append((txid, fnOnSeen, fnOnConfirm, callback_data))
 
   def clear_waiting(self):
