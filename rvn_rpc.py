@@ -95,7 +95,7 @@ def decode_full(txid):
 def requires_unlock():
   #returns None if no password set
   phrase_test = do_rpc("help", command="walletpassphrase")
-  return phrase_test.startswith("walletpassphrase")
+  return phrase_test and phrase_test.startswith("walletpassphrase")
 
 def check_unlock(timeout = 10):
   rpc = AppInstance.settings.rpc_details()

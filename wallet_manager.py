@@ -257,7 +257,8 @@ class WalletManager:
   def update_wallet(self):
     self.check_waiting()
     #Locked UTXO's are excluded from the list command
-    self.utxos = do_rpc("listunspent")
+    utxos = do_rpc("listunspent")
+    self.utxos = [utxo for utxo in utxos if utxo["spendable"]] #only include spendable UTXOs
       
     #Pull list of assets for selecting
     self.assets = do_rpc("listmyassets", asset="", verbose=True)
