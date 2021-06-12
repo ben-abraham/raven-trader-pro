@@ -2,7 +2,7 @@ import os.path, logging
 from logging.handlers import TimedRotatingFileHandler
 from util import ensure_directory
 
-LOG_STORAGE_PATH = "~/.raventrader/raventrader.log"
+LOG_STORAGE_PATH = "~/.raventrader/logs/raventrader.log"
 
 class AppInstance:
   settings = None
@@ -11,7 +11,7 @@ class AppInstance:
   server = None
 
   @staticmethod
-  def setup_logging(directory):
+  def setup_logging():
     path = os.path.expanduser(LOG_STORAGE_PATH)
     ensure_directory(os.path.dirname(path))
     logger = logging.getLogger()
@@ -30,7 +30,7 @@ class AppInstance:
 
   @staticmethod
   def on_init():
-    AppInstance.setup_logging(AppInstance.settings.get_path())
+    AppInstance.setup_logging()
     AppInstance.storage = AppStorage()
     AppInstance.wallet = WalletManager()
     AppInstance.server = ServerConnection()
