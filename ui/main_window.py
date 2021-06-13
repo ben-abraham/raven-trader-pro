@@ -298,7 +298,7 @@ class MainWindow(QMainWindow):
       partial_swap = order_dialog.build_order()
       finished_swap = partial_swap.complete_order()
       if finished_swap:
-        logging.info("Swap: ", json.dumps(partial_swap.__dict__))
+        logging.info("Swap constructed, ready for execute: {}".format(partial_swap))
         sent_txid = self.preview_complete(finished_swap, "Confirm Transaction [2/2]")
         if sent_txid:
           self.wallet.swap_executed(partial_swap, sent_txid)
