@@ -48,7 +48,7 @@
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
+    <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,1,1">
      <item>
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
@@ -63,6 +63,27 @@
        </item>
        <item>
         <widget class="QListWidget" name="lstInputs"/>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayout_3" stretch="1,5">
+       <item>
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Summary</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignHCenter|Qt::AlignTop</set>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="lblTransactionSummary">
+         <property name="alignment">
+          <set>Qt::AlignHCenter|Qt::AlignTop</set>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>

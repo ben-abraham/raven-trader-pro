@@ -636,7 +636,7 @@ QListView::disabled
 }
 
 
-QListView::item 
+QListView::item
 {
 	background-color: #2d2d2d;
     padding: 1px;
@@ -644,14 +644,14 @@ QListView::item
 }
 
 
-QListView::item:alternate 
+QListView::item:alternate
 {
     background-color: #3a3a3a;
 
 }
 
 
-QListView::item:selected 
+QListView::item:selected
 {
 	background-color: #b78620;
 	border: 1px solid #b78620;
@@ -660,7 +660,7 @@ QListView::item:selected
 }
 
 
-QListView::item:selected:!active 
+QListView::item:selected:!active
 {
 	background-color: #b78620;
 	border: 1px solid #b78620;
@@ -669,7 +669,7 @@ QListView::item:selected:!active
 }
 
 
-QListView::item:selected:active 
+QListView::item:selected:active
 {
 	background-color: #b78620;
 	border: 1px solid #b78620;
@@ -678,7 +678,8 @@ QListView::item:selected:active
 }
 
 
-QListView::item:hover {
+QListView::item:hover
+{
     background-color: #262626;
     border: none;
     color: white;
@@ -996,6 +997,16 @@ QLabel[status="pending"]
 QLabel[status="confirmed"]
 {
 	color: #4aa96c;
+}
+
+/* Vout row, owed not by us */
+QListView::item *[external="yes"]
+{
+	background-color: #440000;
+}
+QListView::item *[external="no"]
+{
+	background-color: #004400;
 }
 
 #txtSigned

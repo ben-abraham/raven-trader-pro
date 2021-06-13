@@ -100,7 +100,7 @@ def b64_to_hex(b64_str):
 #Helper Classes
 #
 
-class QTwoLineRowWidget (QWidget):
+class QTwoLineRowWidget (QFrame):
   def __init__ (self, parent = None):
     super(QTwoLineRowWidget, self).__init__(parent)
     self.textQVBoxLayout = QVBoxLayout()
@@ -203,12 +203,19 @@ class QTwoLineRowWidget (QWidget):
     else:
       row.setTextUp("{:.8g} RVN".format(float(row.vout["value"])))
     
+    row.setProperty("external", "no" if ismine else "yes")
     if(ismine):
       row.setTextDown("** {}".format(spk["addresses"][0]))
     else:  
       row.setTextDown(spk["addresses"][0])
+      
 
     return row
+
+  def writeProp(self, name, value):
+    current_value = self.allQHBoxLayout.property(name)
+    if value != current_value:
+      self.allQHBoxLayout.setProperty(name, value)
 
   def get_data(self):
     for data_prop in ["swap", "trade", "asset_data"]:

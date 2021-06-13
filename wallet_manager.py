@@ -452,8 +452,8 @@ class WalletManager:
       return txout == None
 
   #return ({type, utxo}, amount)
-  def search_utxo(self, utxo):
-    (txid, vout) = split_utxo(utxo)
+  def search_utxo(self, utxo_str):
+    (txid, vout) = split_utxo(utxo_str)
     for utxo in self.utxos:
       if utxo["txid"] == txid and utxo["vout"] == vout:
         return utxo

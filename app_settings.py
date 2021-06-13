@@ -66,6 +66,7 @@ class AppSettings:
     self.init_setting("active_rpc", 0)
     self.init_setting("update_interval", 5000)
     self.init_setting("server_url", "https://raventrader.net")
+    self.init_setting("preview_timeout", 3)
 
     return first_launch
 #
