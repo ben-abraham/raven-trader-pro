@@ -319,8 +319,16 @@ class MainWindow(QMainWindow):
     preview_dialog = PreviewTransactionDialog(swap, raw_tx, preview_title=message, parent=self)
     if preview_dialog.exec_():
       logging.info("Transaction Approved. Sending!")
-      submitted_txid = do_rpc("sendrawtransaction", hexstring=raw_tx)
-      return submitted_txid
+      submitted_txid = do_rpc("sendrawtransaction", log_error=False, hexstring=raw_tx)
+      if type(submitted_txid) is str:
+        return submitted_txid #we are expecting a string
+      elif "error" in submitted_txid: #otherwise it's an error object
+        error = submitted_txid["error"]
+        logging.error("Error ocurred when attempting to submit raw transaction. {}".format(error))
+        show_error("Transaction Error", "Error ocurred while submitting the transaction!", error["message"], self)
+      else:
+        logging.error("Unknown response from transaction: {}".format(submitted_txid))
+        show_error("Transaction Error", "Unknown error ocurred while submitting the transaction!", submitted_txid, self)
     return None
 
   def view_trade_details(self, trade, force_order=False):

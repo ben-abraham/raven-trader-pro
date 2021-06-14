@@ -60,7 +60,10 @@ def do_rpc(method, log_error=True, **kwargs):
       logging.error("RPC ==> {}".format(req))
       logging.error("RPC <== {}".format(resp.text))
     if resp.status_code != 200:
-      return None
+      try: #Attempt parse response when failed
+        return json.loads(resp.text)
+      except:
+        return None
     return json.loads(resp.text)["result"]
   except TimeoutError:
     if log_error:
