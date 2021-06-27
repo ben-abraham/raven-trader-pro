@@ -67,6 +67,7 @@ class AppSettings:
     self.init_setting("update_interval", 5000)
     self.init_setting("server_url", "https://raventrader.net")
     self.init_setting("preview_timeout", 3)
+    self.init_setting("protocol_handler_enabled", False)
 
     return first_launch
 #
@@ -133,6 +134,11 @@ class AppSettings:
 #
 # Other helper
 #
+  def protocol_enabled(self):
+    return self.read("protocol_handler_enabled")
+
+  def protocol_path(self):
+    return "rvnswap" if self.rpc_mainnet() else "rvntswap"
 
   def server_enabled(self):
     return True if self.read_setting("server_url") else False

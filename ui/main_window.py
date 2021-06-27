@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
 
-import sys, getopt, argparse, json, time, getpass, os.path, logging
+import sys, getopt, argparse, json, time, getpass, os.path, logging, re
 from util import *
 from rvn_rpc import *
 
@@ -56,6 +56,20 @@ class MainWindow(QMainWindow):
 #
 # Action callbacks
 #
+
+  def on_url_handled(self, uri):
+    self.setWindowState(self.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
+    self.activateWindow()
+    #CAUTION: This uri comes from an external source. caution must be used
+    if uri.startswith(self.settings.protocol_path() + "://"):
+      (_, hex) = uri.split("://")
+      hex = hex.strip('/') #strip any leading/traind /'s
+      if re.search("^[0-9a-fA-F]*$", hex):
+        self.complete_order(hex_prefill=hex)
+      else:  
+        logging.warn("Unknown format: {} attempted".format(uri))
+    else:
+      logging.warn("Unknown handle: {} attempted. Expected {}://<signed partial hex>".format(uri, self.settings.protocol_path()))
 
   def new_buy_order(self, prefill=None):
     if self.menu_context["type"] == "asset":

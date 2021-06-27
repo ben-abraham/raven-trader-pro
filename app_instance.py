@@ -1,6 +1,6 @@
 import os.path, logging
 from logging.handlers import TimedRotatingFileHandler
-from util import ensure_directory
+from util import *
 
 LOG_STORAGE_PATH = "~/.raventrader/logs/raventrader.log"
 
@@ -30,7 +30,6 @@ class AppInstance:
 
   @staticmethod
   def on_init():
-    AppInstance.setup_logging()
     AppInstance.storage = AppStorage()
     AppInstance.wallet = WalletManager()
     AppInstance.server = ServerConnection()
@@ -42,6 +41,7 @@ class AppInstance:
     AppInstance.wallet.invalidate_all()
     AppInstance.wallet.on_load()
     #AppInstance.server.on_load()
+    check_path_registration(AppInstance.settings.protocol_enabled(), get_registration_program(), AppInstance.settings.protocol_path())
 
   @staticmethod
   def on_close():

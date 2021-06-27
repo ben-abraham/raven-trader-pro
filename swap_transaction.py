@@ -293,7 +293,7 @@ class SwapTransaction():
   @staticmethod
   def decode_swap(raw_swap):
     parsed = do_rpc("decoderawtransaction", log_error=False, hexstring=raw_swap)
-    if parsed:
+    if parsed and "error" not in parsed:
       if len(parsed["vin"]) != 1 or len(parsed["vout"]) != 1:
         return (False, "Invalid Transaction. Has more than one vin/vout")
       if "SINGLE|ANYONECANPAY" not in parsed["vin"][0]["scriptSig"]["asm"]:

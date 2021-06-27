@@ -43,6 +43,59 @@ def make_prefill(asset, quantity=1, unit_price=1):
 #Helper function
 #
 
+LINUX_PROTO_PATH = "raventraderpro.desktop"
+
+def get_registration_program():
+  cwd = os.path.dirname(os.path.abspath(__file__))
+  return "{} {}/main.py".format(sys.executable, cwd)
+
+def check_path_registration(enabled, execution_path, protocol):
+  if sys.platform == "linux" or sys.platform == "linux2":
+    # linux
+    reg_path = os.path.expanduser("~/.local/share/applications/{}".format(LINUX_PROTO_PATH))
+
+    if enabled:
+      contents = "[Desktop Entry]\r\n\
+Type=Application\r\n\
+Name=Ravencoin Swap Handler\r\n\
+Exec={} %u\r\n\
+StartupNotify=false\r\n\
+MimeType=x-scheme-handler/{};".format(execution_path, protocol)
+
+      with open(reg_path, 'w') as f:
+        f.write(contents)
+
+      subprocess.check_output( # Set Default
+        "xdg-mime default raventraderpro.desktop x-scheme-handler/{}".format(protocol),
+        stderr=subprocess.STDOUT,
+        shell=True
+      )
+    else:
+      current_def = subprocess.check_output("xdg-mime query default x-scheme-handler/{}".format(protocol), shell=True).strip()
+      if path.exists(reg_path):
+        logging.info("Removing now-disabled uri handler")
+        os.remove(reg_path)
+        
+    return True
+  elif sys.platform == "darwin":
+    # OS X
+    return False
+  elif sys.platform == "win32":
+    # Windows, requires admin ~_~
+    handlerKey = QSettings("HKEY_CURRENT_USER\\SOFTWARE\\classes\\{}".format(protocol), QSettings.NativeFormat)
+    handlerOpenKey = QSettings("HKEY_CURRENT_USER\\SOFTWARE\\classes\\{}\\shell\\open\\command".format(protocol), QSettings.NativeFormat)
+    if enabled:
+      handlerKey.setValue(".", "URL:{} Protocol".format(protocol))
+      handlerKey.setValue("URL Protocol", "")
+      handlerOpenKey.setValue(".", "{} %1".format(execution_path))
+    else:
+      handlerOpenKey.remove(".")
+      handlerKey.remove("URL Protocol")
+      handlerKey.remove(".")
+    handlerKey.sync()
+    handlerOpenKey.sync()
+    return True
+
 def open_file(filename):
   logging.info("Opening system file for editing: {}".format(filename))
   if sys.platform == "win32":
