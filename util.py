@@ -72,7 +72,7 @@ MimeType=x-scheme-handler/{};".format(execution_path, protocol)
       )
     else:
       current_def = subprocess.check_output("xdg-mime query default x-scheme-handler/{}".format(protocol), shell=True).strip()
-      if path.exists(reg_path):
+      if os.path.exists(reg_path):
         logging.info("Removing now-disabled uri handler")
         os.remove(reg_path)
         
