@@ -81,7 +81,7 @@ def do_rpc(method, log_error=True, **kwargs):
 
 def decode_full(txid):
   local_decode = do_rpc("getrawtransaction", log_error=False, txid=txid, verbose=True)
-  if local_decode:
+  if local_decode and "error" not in local_decode:
     result = local_decode
   else:
     rpc = AppInstance.settings.rpc_details()
@@ -131,11 +131,10 @@ def search_swap_tx(utxo):
   return None #If we don't find it 10 blocks back, who KNOWS what happened to it
 
 def asset_details(asset_name):
-  asset_name = asset_name.replace("!", "")
   admin = False
   if(asset_name[-1:] == "!"):
     admin = True
-    asset_name = asset_name[:-1]#Take all except !
+    asset_name = asset_name[:-1] #Take all except !
   details = do_rpc("getassetdata", asset_name=asset_name)
   return (admin, details)
 
