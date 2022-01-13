@@ -306,9 +306,13 @@ class SwapTransaction():
       #And we probably aren't runnin a full node
       vin_tx = decode_full(swap_vin["txid"])
       
-      #If nothing comes back this is likely a testnet tx on mainnet of vice-versa
+      #If nothing comes back this is likely spent, or a testnet tx on mainnet of vice-versa
       if not vin_tx:
-        return (False, "Unable to find transaction. Is this for the correct network?")
+        return (False, "Unable to find transaction.\nIs this for the correct network?")
+
+      test_vout = do_rpc("gettxout", txid=swap_vin["txid"], n=swap_vin["vout"])
+      if not test_vout:
+        return (False, "Unable to find UTXO, this transaction may have been executed already.")
 
       src_vout = vin_tx["vout"][swap_vin["vout"]]
       in_asset = "asset" in src_vout["scriptPubKey"]
